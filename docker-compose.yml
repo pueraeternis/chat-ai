@@ -1,11 +1,10 @@
 services:
-  triton:
-    build: .
-    image: chat-ai-triton:${TRITON_IMAGE_TAG:-local}
-    container_name: triton-llm
+  vllm:
+    image: vllm/vllm-openai:${VLLM_IMAGE_TAG:-v0.12.0}
+    container_name: vllm-llm
     restart: unless-stopped
     ipc: host
-    shm_size: "8589934592"
+    shm_size: "8g"
     deploy:
       resources:
         reservations:
@@ -14,29 +13,34 @@ services:
               device_ids: ["0"]
               capabilities: [gpu]
     ports:
-      - "${TRITON_HTTP_PORT:-18100}:8000"
-      - "${TRITON_GRPC_PORT:-18101}:8001"
-      - "${TRITON_METRICS_PORT:-18102}:8002"
-      - "${TRITON_OPENAI_PORT:-19000}:9000"
+      - "${VLLM_PORT:-19000}:8000"
     volumes:
       - type: bind
         source: ${HF_CACHE_ROOT}
         target: /root/.cache/huggingface
-      - type: bind
-        source: ./models
-        target: /models
-        read_only: true
     command:
       [
-        "python3",
-        "/opt/tritonserver/python/openai/openai_frontend/main.py",
-        "--model-repository=/models",
-        "--tokenizer=${TRITON_TOKENIZER}",
-        "--openai-port=9000",
-        "--host=0.0.0.0",
+        "Qwen/Qwen3-30B-A3B-Instruct-2507",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--served-model-name",
+        "qwen3-30b-instruct",
+        "--max-model-len",
+        "32768",
+        "--gpu-memory-utilization",
+        "0.9",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "hermes",
       ]
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/v1/models', timeout=5).read()\""]
+      test:
+        [
+          "CMD-SHELL",
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/models', timeout=5).read()\"",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -50,7 +54,7 @@ services:
       - "${OPEN_WEBUI_PORT:-13000}:8080"
     environment:
       AIOHTTP_CLIENT_TIMEOUT: "600"
-      OPENAI_API_BASE_URL: "http://triton:9000/v1"
+      OPENAI_API_BASE_URL: "http://vllm:8000/v1"
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
       ENABLE_OLLAMA_API: "false"
       HF_HUB_CACHE: /hf-hub
@@ -64,7 +68,7 @@ services:
         target: /hf-hub
         read_only: true
     depends_on:
-      triton:
+      vllm:
         condition: service_healthy
 
 volumes:
