@@ -24,6 +24,7 @@ from core.web_search_logging import (
 )
 from operations.search_locale import searxng_locale_from_messages
 from operations.sse_events import owui_citation_event, owui_status_event, url_citation_annotations
+from operations.web_search_prompt import prepend_web_search_system
 from operations.stream_passthrough import passthrough_vllm_stream
 
 
@@ -140,7 +141,7 @@ class WebSearchOrchestrator:
         pages = self._fetch_pages(urls, budget.markdown_max_chars)
         self._log_fetch_outcome(urls, pages)
 
-        final_content = self._final_answer(model_id, messages, query, pages)
+        final_content = self._final_answer(model_id, messages, query, pages, user_location)
         duration_ms = (time.perf_counter() - pipeline_start) * 1000
         log_web_search_complete(
             outcome="success",
@@ -253,7 +254,7 @@ class WebSearchOrchestrator:
         yield owui_status_event("Generating answer…", done=True, action="web_search")
 
         annotations = url_citation_annotations(pages)
-        final_body = self._final_stream_body(model_id, messages, query, pages)
+        final_body = self._final_stream_body(model_id, messages, query, pages, user_location)
         async for chunk in passthrough_vllm_stream(
             self._inference,
             final_body,
@@ -267,21 +268,32 @@ class WebSearchOrchestrator:
         messages: list[dict[str, Any]],
         query: str,
         pages: list[dict[str, str]],
+        user_location: dict[str, Any],
     ) -> dict[str, Any]:
-        context = "\n\n---\n\n".join(f"Source: {p['url']}\n{p['markdown']}" for p in pages)
-        tool_content = f"Web search results for query {query!r}:\n\n{context}"
         return {
             "model": model,
-            "messages": [
-                *messages,
-                {
-                    "role": "tool",
-                    "content": tool_content,
-                    "name": "web_search",
-                },
-            ],
+            "messages": self._build_final_messages(messages, user_location, query, pages),
             "temperature": 0.3,
         }
+
+    @staticmethod
+    def _build_final_messages(
+        messages: list[dict[str, Any]],
+        user_location: dict[str, Any],
+        query: str,
+        pages: list[dict[str, str]],
+    ) -> list[dict[str, Any]]:
+        context = "\n\n---\n\n".join(f"Source: {p['url']}\n{p['markdown']}" for p in pages)
+        tool_content = f"Web search results for query {query!r}:\n\n{context}"
+        grounded = prepend_web_search_system(messages, user_location)
+        return [
+            *grounded,
+            {
+                "role": "tool",
+                "content": tool_content,
+                "name": "web_search",
+            },
+        ]
 
     def _router(
         self,
@@ -384,20 +396,12 @@ class WebSearchOrchestrator:
         messages: list[dict[str, Any]],
         query: str,
         pages: list[dict[str, str]],
+        user_location: dict[str, Any],
     ) -> str:
-        context = "\n\n---\n\n".join(f"Source: {p['url']}\n{p['markdown']}" for p in pages)
-        tool_content = f"Web search results for query {query!r}:\n\n{context}"
         completion = self._inference.chat_completion(
             {
                 "model": model,
-                "messages": [
-                    *messages,
-                    {
-                        "role": "tool",
-                        "content": tool_content,
-                        "name": "web_search",
-                    },
-                ],
+                "messages": self._build_final_messages(messages, user_location, query, pages),
                 "temperature": 0.3,
             },
         )

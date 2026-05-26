@@ -1,6 +1,6 @@
 # Plan 06 — web_search temporal grounding (system prompt)
 
-**Status:** Planned (documentation 2026-05-26; implementation pending).  
+**Status:** Implemented (2026-05-26).  
 **Goal:** Stop the final LLM from rejecting fetched web results as “from the future” when source dates are newer than the model’s training-time notion of “today”. Inject an **English** system prompt with the **real current date** on the proxy, only for the **web_search final answer** step.
 
 **Prerequisites:** Plans 02–04 (web_search pipeline), plan 05 (logging).  
@@ -91,21 +91,21 @@ sequenceDiagram
 
 ### 5.1 Core
 
-- [ ] `web_search_prompt.py` with timezone resolution (`zoneinfo.ZoneInfo`, fallback UTC)
-- [ ] `build_web_search_system_prompt` (English template)
-- [ ] `prepend_web_search_system` — insert system as **first** message; do not duplicate if already present (v1: always prepend one proxy system message; document that OWUI system prompts may stack)
+- [x] `web_search_prompt.py` with timezone resolution (`zoneinfo.ZoneInfo`, fallback UTC)
+- [x] `build_web_search_system_prompt` (English template)
+- [x] `prepend_web_search_system` — insert system as **first** message; do not duplicate if already present (v1: always prepend one proxy system message; document that OWUI system prompts may stack)
 
 ### 5.2 Pipeline
 
-- [ ] `_final_answer`: `messages=prepend_web_search_system(messages, user_location)`
-- [ ] `_final_stream_body`: same
-- [ ] SKIP / no-hits paths unchanged (no system inject when no tool results)
+- [x] `_final_answer`: `messages=prepend_web_search_system(messages, user_location)`
+- [x] `_final_stream_body`: same
+- [x] SKIP / no-hits paths unchanged (no system inject when no tool results)
 
 ### 5.3 Tests & docs
 
-- [ ] Unit tests for prompt text and timezone fallback
+- [x] Unit tests for prompt text and timezone fallback
 - [ ] Optional: extend web_search smoke with assertion on answer not containing “future” heuristics — fragile; prefer unit tests
-- [ ] Update ARCHITECTURE observability / web_search subsection
+- [x] Update ARCHITECTURE observability / web_search subsection
 
 ### 5.4 Operator verification
 

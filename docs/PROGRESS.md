@@ -1,12 +1,18 @@
 # Progress
 
-**Active plan:** [06-web-search-temporal-grounding.md](plans/06-web-search-temporal-grounding.md) *(documentation done; implementation pending)*
+**Active plan:** *(none — plan 06 complete)*
 
-**Summary:** Plan 06 — English system prompt with real date on web_search final LLM only (fix “future news” rejections).
+**Summary:** Plan 06 shipped — English system prompt with real date on web_search final LLM only.
 
 ---
 
 ## Journal
+
+### [2026-05-26] Plan 06 — implementation (web_search temporal grounding)
+
+- `src/operations/web_search_prompt.py`: `resolve_timezone`, `build_web_search_system_prompt`, `prepend_web_search_system`.
+- `web_search_pipeline`: `_build_final_messages` used by `_final_answer` and `_final_stream_body`; SKIP/no-hits unchanged.
+- Tests `tests/test_web_search_system_prompt.py`; ARCHITECTURE + plan 06 status updated.
 
 ### [2026-05-26] Plan 06 — documentation (web_search temporal grounding)
 

@@ -85,7 +85,7 @@ Single public surface: **OpenAI Chat Completions** shape (not full OpenAI Platfo
 
 **Pipeline:** router LLM → MCP `search_urls` (10) → LLM URL filter → MCP `fetch_page_markdown` (parallel) → final LLM → citations in `annotations` (non-stream) and OWUI `citation` events + streamed answer (plan 03 stream).
 
-**Temporal grounding (plan 06, planned):** Final LLM only — proxy prepends an English `system` message with today’s date (`datetime`, timezone from `user_location`) so the model trusts fetched sources instead of rejecting them as “from the future” relative to training cutoff. Details: [plans/06-web-search-temporal-grounding.md](plans/06-web-search-temporal-grounding.md).
+**Temporal grounding (plan 06):** Final LLM only (`_final_answer` / `_final_stream_body`) — `web_search_prompt.py` prepends an English `system` message with today’s date (`datetime`, IANA timezone from `user_location.approximate.timezone`, else UTC) so the model treats the following `tool` block as live web evidence. Router, URL filter, SKIP, and no-hits paths are unchanged. Details: [plans/06-web-search-temporal-grounding.md](plans/06-web-search-temporal-grounding.md).
 
 **SearXNG language:** from last user message (`search_locale.py`): Cyrillic ≥ Latin → `ru`; else `en`. MCP `search_urls` passes this as SearXNG `language` ([locale tags](https://docs.searxng.org/src/searx.locales.html): `en`, `ru`, …). **`user_location`** is required for the API tool shape (country/city/timezone) but does not set SearXNG locale.
 
