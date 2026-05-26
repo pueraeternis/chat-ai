@@ -162,12 +162,17 @@ sequenceDiagram
 | Layer | Responsibility |
 |-------|----------------|
 | `src/adapters/vllm_inference.py` | `InferencePort`: chat completions to vLLM |
-| `src/adapters/mcp_web_search_client.py` | MCP `tools/call` to web-search HTTP |
+| `src/adapters/mcp_tool_client.py` | Generic MCP HTTP `tools/call` (streamable HTTP) |
+| `src/core/system_tool_registry.py` | Map `tools[].type` → MCP base URL + orchestrator |
 | `src/operations/chat_completion.py` | Route modes, validate, orchestrate |
-| `src/operations/web_search_pipeline.py` | Steps 0–5 |
+| `src/operations/web_search_pipeline.py` | Steps 0–5; calls MCP `search_urls` / `fetch_page_markdown` |
 | `src/operations/reasoning_fallback.py` | Split `` tags if vLLM leaves them in `content` |
-| `src/web_search/` | Copied web-search package (core, operations, adapters, mcp_servers) |
+| `src/web_search/` | Embedded web-search: `operations` + `mcp_servers` (HTTP server) |
 | `src/main.py` or `src/adapters/http_api.py` | FastAPI OpenAI routes |
+
+**Integration rule:** proxy **orchestrates**, MCP servers **execute** tool primitives. `web_search.operations` is not imported on the proxy hot path in v1 (stays inside **web-search-mcp**; reusable in-process elsewhere).
+
+**Future system tool:** add MCP server to Compose, register `type` in `system_tool_registry`, implement orchestrator (or single composite MCP tool if appropriate).
 
 Onion layout per `.cursor/rules/02-architecture-standards.mdc`.
 
@@ -202,9 +207,10 @@ vllm → GPU, HF cache
 
 ### 5.1 Repository and web-search
 
-- [ ] Copy web-search into `src/web_search/` (or `packages/web_search/`) + `config/`
+- [ ] Copy web-search into `src/web_search/` + `config/web_search/` + `tests/web_search/`
+- [ ] Refactor imports to `web_search.*` (avoid clash with proxy `src/core/`)
 - [ ] Merge `pyproject.toml` / workspace deps (playwright, httpx, mcp, …)
-- [ ] Add Compose: `searxng`, `web-search-mcp`, healthchecks
+- [ ] Add Compose: `searxng`, `web-search-mcp` (HTTP `/mcp`), healthchecks
 - [ ] Document `WEB_SEARCH_*` env vars in ARCHITECTURE
 
 ### 5.2 Proxy core
@@ -212,13 +218,13 @@ vllm → GPU, HF cache
 - [ ] FastAPI app: `GET /v1/models`, `POST /v1/chat/completions`
 - [ ] Request validation: tool mode, conflicts, required `user_location`
 - [ ] `VllmInferenceAdapter` (`InferencePort`)
+- [ ] `McpToolClient` + `system_tool_registry` (extensible beyond `web_search`)
 - [ ] Plain chat + multimodal message passthrough
 - [ ] Client function mode: passthrough + normalize `tool_calls`
 
 ### 5.3 Web search
 
-- [ ] `McpWebSearchClient` (`search_urls`, `fetch_page_markdown`)
-- [ ] `WebSearchOrchestrator` (pipeline steps 0–5)
+- [ ] `WebSearchOrchestrator` (pipeline steps 0–5) via **MCP HTTP** (`search_urls`, `fetch_page_markdown`)
 - [ ] Response builder: `content` + `annotations` (`url_citation`)
 - [ ] Timeouts suitable for long pipeline (document for clients)
 
@@ -258,5 +264,8 @@ vllm → GPU, HF cache
 - `/v1/responses`, Assistants API, embeddings, images API.
 - Streaming.
 - Multiple system tools per request.
+- Second and later MCP servers beyond web-search (registry design only).
+- Proxy in-process calls to `web_search.operations` (optional optimization later).
+- MCP stdio between proxy and tools in production.
 - `stream` and `parallel_tool_calls` edge cases beyond defaults.
 - Quantization / multi-GPU.

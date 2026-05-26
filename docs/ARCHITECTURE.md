@@ -9,7 +9,7 @@ Local GPU stack: **OpenAI-compatible chat-proxy**, **Qwen3-VL** on **vLLM**, **w
 | **Open WebUI** | Browser UI, sessions, RAG (local embeddings); OpenAI client → proxy |
 | **chat-proxy** | Public API: `/v1/chat/completions`, `/v1/models`; system tools, validation, orchestration |
 | **vLLM** | Internal inference: VL model, Hermes tool calls, Qwen3 reasoning parser |
-| **web-search (MCP)** | SearXNG metasearch + Playwright markdown fetch (`search_urls`, `fetch_page_markdown`) |
+| **web-search (MCP HTTP)** | SearXNG + Playwright; MCP tools `search_urls`, `fetch_page_markdown` (logic in `web_search.operations`) |
 | **SearXNG** | External metasearch HTTP API |
 | **Host** | NVIDIA A100 80GB, Hugging Face cache, Docker Compose |
 
@@ -131,17 +131,35 @@ Hermes parser maps to OpenAI `tool_calls` on the wire.
 
 ---
 
+## System tools and MCP integration bus
+
+SDK clients use **OpenAI Chat API** (`tools[].type`). They do **not** speak MCP directly.
+
+| Class | API | Proxy | Backend |
+|-------|-----|-------|---------|
+| **System / hosted** | `type: "web_search"`, … | Orchestration + **MCP HTTP client** | Dedicated MCP server per capability |
+| **Client** | `type: "function"` | Passthrough | vLLM (Hermes `tool_calls`) |
+
+**Registry (concept):** `web_search` → `WEB_SEARCH_MCP_URL` (e.g. `http://web-search-mcp:8767/mcp`). Future types → other MCP URLs.
+
+**Transport:** streamable **HTTP** only for proxy↔MCP in production (Compose). MCP **stdio** remains for local dev / external MCP clients, not the proxy hot path.
+
+**In-process `operations`:** used inside each MCP server (and optionally by other integrators such as platform pyAPI). **Not** the primary path from chat-proxy to web-search in v1.
+
+---
+
 ## web-search module
 
-Copied from the standalone web-search project into this repo:
+Copied from the standalone web-search project into this repo (`src/web_search/`):
 
 | Piece | Role |
 |-------|------|
-| `operations/search_urls` | SearXNG → URL hits + snippets |
-| `operations/fetch_page_markdown` | Playwright + trafilatura |
-| `mcp_servers` (HTTP) | `search_urls`, `fetch_page_html`, `fetch_page_markdown` |
+| `web_search/operations/` | Reusable scenarios: `search_urls`, `fetch_page_markdown`, … |
+| `web_search/adapters/` | SearXNG HTTP, Playwright pool |
+| `web_search/core/` | DTOs, config YAML, URL policies |
+| `web_search/mcp_servers/` | Thin MCP tool handlers → operations; **HTTP** and stdio entrypoints |
 
-Proxy calls MCP over HTTP; does not expose MCP to end users.
+**web-search-mcp** container: Playwright + Chromium + MCP HTTP. **chat-proxy** calls `tools/call` on that server; orchestration stays in proxy.
 
 ---
 

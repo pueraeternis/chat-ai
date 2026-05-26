@@ -20,7 +20,7 @@ services:
         target: /root/.cache/huggingface
     command:
       [
-        "Qwen/Qwen3-30B-A3B-Instruct-2507",
+        "Qwen/Qwen3-VL-30B-A3B-Instruct",
         "--host",
         "0.0.0.0",
         "--port",

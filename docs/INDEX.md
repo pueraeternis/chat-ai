@@ -35,7 +35,8 @@ Plan 02 will add proxy smoke scripts. Requires running stack (`docker compose up
 
 | Path | Purpose |
 |------|---------|
-| `src/adapters/` | vLLM HTTP, MCP client, FastAPI routes |
+| `src/adapters/` | vLLM HTTP, MCP HTTP client, FastAPI routes |
+| `src/core/system_tool_registry.py` | *(plan 02)* Map `tools[].type` → MCP server + orchestrator |
 | `src/operations/` | Chat routing, web search pipeline |
 | `src/core/` | Types, errors, request/response models |
 | `src/web_search/` | Embedded web-search (core, operations, adapters, mcp_servers) |

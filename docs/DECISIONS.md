@@ -130,11 +130,27 @@ Chronological journal. New entries are appended at the end.
 
 ## [2026-05-26] Embed web-search in this repository
 
-**Decision:** Copy the **web-search** project into chat-ai (`src/web_search/` or workspace package): `core`, `operations`, `adapters`, `config`, tests; run MCP HTTP (+ SearXNG) in Compose. Proxy uses an MCP **client** (`tools/call`); business logic stays in web-search operations.
+**Decision:** Copy the **web-search** project into chat-ai under the `web_search` namespace (e.g. `src/web_search/{core,operations,adapters,mcp_servers}`, `config/web_search/`, `tests/web_search/`). Run **web-search-mcp** over **streamable HTTP** plus **SearXNG** in Compose. Imports refactored to `web_search.*` to avoid clashing with proxy `src/core/`.
 
 **Reason:** Single repo for GPU stack + search; no dependency on an external `~/projects/web-search` path at deploy time.
 
-**Rejected:** Proxy reimplementing SearXNG/Playwright; mandatory in-process-only integration without MCP in v1 (in-process may follow as optimization).
+**Rejected:** Proxy reimplementing SearXNG/Playwright; leaving flat `from core import` packages that collide with proxy layers.
+
+## [2026-05-26] System tools via MCP HTTP (integration bus)
+
+**Decision:** **chat-proxy** connects hosted/system capabilities only through **MCP over HTTP** (`tools/call` on `/mcp`). Maintain a **system tool registry**: public `tools[].type` (e.g. `web_search`) → MCP server base URL + proxy-side orchestration. **web-search-mcp** is the first registered server. Additional capabilities in future waves = new MCP server in Compose + registry entry—not new ad-hoc HTTP clients per feature.
+
+**Reason:** MCP is the standard integration surface; the same MCP servers can serve Open WebUI, local dev tools, and smoke tests. HTTP fits multi-container Compose. MCP stdio is only slightly faster than HTTP and does not apply across containers.
+
+**Rejected:** MCP stdio as the primary proxy↔tool transport in production; exposing raw MCP wire protocol to application SDKs (clients use OpenAI Chat API with `tools[].type`); replacing MCP with direct in-process `operations` calls on the proxy hot path in v1.
+
+## [2026-05-26] operations layer vs MCP tools
+
+**Decision:** **`web_search.operations`** holds reusable business logic (`search_urls`, `fetch_page_markdown`, …) with explicit dependencies and `*Result` DTOs. **`web_search.mcp_servers`** registers thin MCP tools that delegate to operations. **Proxy** runs multi-step **orchestration** (router LLM, URL filter, final LLM, `annotations`) and invokes **MCP tools** (`search_urls`, `fetch_page_markdown`), not `operations` directly. Other hosts (e.g. future platform pyAPI) may call the same operations **in-process** without MCP.
+
+**Reason:** One logic path for search/fetch; MCP standardizes the proxy boundary; operations stay portable for non-MCP integrators documented in the original web-search repo.
+
+**Rejected:** Duplicating search/fetch in proxy; requiring every consumer to use MCP (in-process remains valid outside chat-proxy).
 
 ## [2026-05-26] Optional reasoning (VL-Instruct hybrid)
 
