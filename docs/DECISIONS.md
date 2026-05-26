@@ -248,3 +248,24 @@ Always end the status sequence with `done: true`. Citations before or as answer 
 **Reason:** Built-in OWUI search runs in OWUI middleware before the model call; proxy `web_search` is a different code path.
 
 **Rejected:** Documenting only proxy annotations without OWUI event format.
+
+## [2026-05-26] Plan 04 — Open WebUI web search via Filter (not built-in OWUI search)
+
+**Decision:** For browser users, wire **proxy hosted `web_search`** using an Open WebUI **Filter Function** (`inlet`) that appends `tools: [{ "type": "web_search", "user_location", "search_context_size" }]` before OWUI calls `OPENAI_API_BASE_URL` (chat-proxy). Filter source lives in repo under `open_webui/functions/`; operators import via Admin → Functions (no OWUI fork, no `FUNCTIONS_DIR`).
+
+**Reason:** Matches OpenAI semantics (search only when tool present); reuses proxy orchestration + plan 03 SSE UX; API clients stay opt-in.
+
+**Rejected:** Relying on OWUI Admin Web Search alone (OWUI middleware, not proxy `web_search`); auto-injecting `web_search` on every proxy request; forking `open-webui`.
+
+## [2026-05-26] Filter injection rules
+
+**Decision:**
+
+- Inject only from Filter `inlet` when the filter is active for the chat (and optionally when `body.features.web_search` is true if valve `require_web_search_feature` is set).
+- Skip injection if `tools` already includes `web_search` or any client `function` tool.
+- Default `user_location` via filter **Valves** (e.g. RU / Saint Petersburg); operators adjust per deployment.
+- **Disable** OWUI global Web Search when this filter is the primary UI path.
+
+**Reason:** Avoid `conflicting_tools` 400; avoid duplicate SearXNG; keep API contract explicit for non-UI clients.
+
+**Rejected:** Mandatory search for all chats; using External Tool Events API from chat-proxy as OpenAI backend.

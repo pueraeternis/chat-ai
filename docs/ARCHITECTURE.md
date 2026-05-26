@@ -39,7 +39,7 @@ flowchart TB
   OW -->|RAG embeddings| HF
 ```
 
-**Deployed stack:** Open WebUI → chat-proxy → vLLM; web-search via MCP. Streaming: plan 03 (not yet in code). See [plans/01-vllm-migration.md](plans/01-vllm-migration.md), [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md).
+**Deployed stack:** Open WebUI → chat-proxy → vLLM; web-search via MCP; streaming via plan 03. UI web search wiring: plan 04 Filter. See [plans/01-vllm-migration.md](plans/01-vllm-migration.md)–[04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md).
 
 ---
 
@@ -96,7 +96,7 @@ Standard OpenAI: proxy forwards `tools` to vLLM; returns `tool_calls` / `finish_
 - Not combined with tools in v1.
 - Clients must **not** send `reasoning_content` in history (400).
 
-### Streaming (plan 03 — target)
+### Streaming (plan 03)
 
 | Mode | `stream: true` |
 |------|----------------|
@@ -105,11 +105,21 @@ Standard OpenAI: proxy forwards `tools` to vLLM; returns `tool_calls` / `finish_
 | Reasoning | Passthrough + `enable_thinking` (no tag parsing on proxy) |
 | `web_search` | Status + citation SSE events, then passthrough final vLLM stream |
 
-**Current code (plan 02):** `stream: true` → 400 `not_supported`.
-
-**Open WebUI:** Progress and source chips use SSE lines `data: {"event": {"type": "status"|"citation", ...}}` from chat-proxy (not OWUI Admin Web Search middleware). Disable built-in OWUI web search when using proxy `web_search` tool.
+**Open WebUI:** Progress and source chips use SSE `data: {"event": {"type": "status"|"citation", ...}}` from chat-proxy when `web_search` tool is in the request.
 
 Full contract: [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md), [plans/03-streaming.md](plans/03-streaming.md).
+
+### Open WebUI → proxy `web_search` (plan 04)
+
+| Path | Who adds `tools: web_search` | Notes |
+|------|------------------------------|--------|
+| **API / SDK** | Client in request body | Opt-in; unchanged |
+| **OWUI Filter** | `inlet` on active filter | Primary UI path; see `open_webui/functions/` |
+| **OWUI built-in Web Search** | OWUI middleware (not proxy tool) | **Disable** when using Filter — duplicate SearXNG |
+
+Filter appends `user_location` from Valves; proxy runs orchestrated pipeline (plan 02) + SSE (plan 03).
+
+Install: [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md).
 
 ### Not in plan 02 / 03
 
@@ -210,4 +220,5 @@ Copied from the standalone web-search project into this repo (`src/web_search/`)
 - [PROGRESS.md](PROGRESS.md) — active plan
 - [plans/01-vllm-migration.md](plans/01-vllm-migration.md) — completed
 - [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md) — completed
-- [plans/03-streaming.md](plans/03-streaming.md) — active
+- [plans/03-streaming.md](plans/03-streaming.md) — completed
+- [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md) — active

@@ -1,12 +1,18 @@
 # Progress
 
-**Active plan:** [plans/03-streaming.md](plans/03-streaming.md)
+**Active plan:** [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md)
 
-**Summary:** Plan 03 implemented: async SSE passthrough (plain, reasoning, functions), orchestrated `web_search` stream with OWUI `status`/`citation` events, smoke `check_proxy_stream.sh`.
+**Summary:** Plan 03 done (SSE streaming). Plan 04 documented: OWUI **Filter** injects proxy `web_search` for UI; built-in OWUI Web Search disabled; API remains opt-in via `tools`. Implementation (filter files + tests) next.
 
 ---
 
 ## Journal
+
+### [2026-05-26] Plan 04 — documentation (OWUI web search Filter)
+
+- Recorded decisions: Filter `inlet` injects `web_search`; disable OWUI built-in Web Search; no auto-inject for all API calls.
+- Added `docs/plans/04-open-webui-web-search-filter.md` (flow, valves, admin setup, checklist).
+- Updated `docs/ARCHITECTURE.md` (OWUI paths table), `docs/INDEX.md`; marked plan 03 completed.
 
 ### [2026-05-26] Plan 03 — implementation (SSE streaming)
 

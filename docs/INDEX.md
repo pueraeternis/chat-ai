@@ -12,7 +12,8 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `docs/PROGRESS.md` | Active plan pointer + archived wave journal |
 | `docs/plans/01-vllm-migration.md` | Completed: Triton → native vLLM |
 | `docs/plans/02-chat-proxy-api.md` | Completed: OpenAI chat proxy, web_search, reasoning, web-search embed |
-| `docs/plans/03-streaming.md` | **Active:** SSE streaming, OWUI status/citations for web_search |
+| `docs/plans/03-streaming.md` | Completed: SSE streaming, OWUI status/citations for web_search |
+| `docs/plans/04-open-webui-web-search-filter.md` | **Active:** OWUI Filter injects proxy `web_search` for UI |
 
 ## Runtime / deployment (root)
 
@@ -42,6 +43,14 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `tests/smoke/check_proxy_models.sh` | Proxy `GET /v1/models` |
 
 Requires running stack (`docker compose up`).
+
+## Open WebUI (`open_webui/`)
+
+| Path | Purpose |
+|------|---------|
+| `open_webui/functions/proxy_web_search_filter.py` | *(plan 04)* Filter: inject `web_search` tool in `inlet` |
+| `open_webui/inject_web_search.py` | *(plan 04)* Inject helper for tests |
+| `open_webui/README.md` | *(plan 04)* Import filter in OWUI Admin |
 
 ## Application code (`src/`)
 

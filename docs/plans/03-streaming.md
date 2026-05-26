@@ -1,6 +1,6 @@
 # Plan 03 — Chat completions streaming (production)
 
-**Status:** Active (documentation approved 2026-05-26).  
+**Status:** Completed (implementation 2026-05-26). Web UI search wiring: [04-open-webui-web-search-filter.md](04-open-webui-web-search-filter.md).  
 **Goal:** Enable `stream: true` on `POST /v1/chat/completions` so Open WebUI and OpenAI SDK clients get SSE token streaming; for `web_search`, show search progress and sources in Open WebUI while streaming the final LLM answer.
 
 **Prerequisite:** Plan 02 implemented (non-stream proxy, web-search pipeline, Compose).  
@@ -178,5 +178,5 @@ Also support OpenAI **`annotations`** / `url_citation` for SDK clients on the fi
 - `/v1/responses`, embeddings, images API
 - Multiple system tools per request
 - Proxy-side `` / reasoning tag splitting in stream
-- OWUI Filter/Pipe to auto-inject `web_search` tool (separate UX task)
+- OWUI Filter auto-inject — see [04-open-webui-web-search-filter.md](04-open-webui-web-search-filter.md)
 - Upgrade OWUI solely for [#19250](https://github.com/open-webui/open-webui/issues/19250) unwrapped status format (verify on 0.6.32 first)
