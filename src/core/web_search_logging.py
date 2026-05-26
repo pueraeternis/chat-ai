@@ -64,6 +64,16 @@ def log_url_filter_result(*, selected_urls: list[str], fallback_used: bool) -> N
     )
 
 
+def log_fetch_page_failed(*, url: str, error: str) -> None:
+    log_event(
+        _WS_LOGGER,
+        "fetch_page_failed",
+        level=logging.WARNING,
+        url=url,
+        error=error[:300],
+    )
+
+
 def log_fetch_results(
     *,
     requested_urls: list[str],

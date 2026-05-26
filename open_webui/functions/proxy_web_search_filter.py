@@ -72,19 +72,19 @@ class Filter:
 
     class Valves(BaseModel):
         country: str = Field(
-            default="RU",
+            default="US",
             description="ISO country for user_location (OpenAI tool contract; not SearXNG locale)",
         )
         city: str = Field(
-            default="Saint Petersburg",
+            default="New York",
             description="Approximate city for user_location",
         )
         region: str = Field(
-            default="Leningrad Oblast",
+            default="New York",
             description="Approximate region for user_location",
         )
         timezone: str = Field(
-            default="Europe/Moscow",
+            default="America/New_York",
             description="IANA timezone for user_location",
         )
         search_context_size: SearchContextSize = Field(

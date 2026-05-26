@@ -40,7 +40,7 @@ def test_rejects_unsupported_scheme(fetch_policies_path: Path) -> None:
 def test_rejects_loopback_literal(fetch_policies_path: Path) -> None:
     cfg = load_fetch_policies_config(fetch_policies_path)
     with pytest.raises(UrlFetchPolicyError) as exc:
-        validate_fetch_url_before_fetch("http://127.0.0.1/", cfg)
+        validate_fetch_url_before_fetch("http://localhost/", cfg)
     assert exc.value.code == CODE_PRIVATE_NETWORK_FORBIDDEN
 
 

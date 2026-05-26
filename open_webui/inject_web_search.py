@@ -77,10 +77,10 @@ def should_skip_web_search_injection(
 def inject_web_search(
     body: dict[str, Any],
     *,
-    country: str = "RU",
-    city: str = "Saint Petersburg",
-    region: str = "Leningrad Oblast",
-    timezone: str = "Europe/Moscow",
+    country: str = "US",
+    city: str = "New York",
+    region: str = "New York",
+    timezone: str = "America/New_York",
     search_context_size: SearchContextSize = "medium",
     require_web_search_feature: bool = False,
 ) -> dict[str, Any]:

@@ -2,7 +2,7 @@
 # Smoke: GET /v1/models lists served model qwen3-30b-instruct.
 set -euo pipefail
 
-BASE_URL="${VLLM_BASE_URL:-http://127.0.0.1:${VLLM_PORT:-19000}/v1}"
+BASE_URL="${VLLM_BASE_URL:-http://localhost:${VLLM_PORT:-19000}/v1}"
 EXPECTED_ID="${VLLM_SERVED_MODEL:-qwen3-vl-30b-instruct}"
 
 response="$(curl -sfS "${BASE_URL}/models")"

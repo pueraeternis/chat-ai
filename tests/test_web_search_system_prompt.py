@@ -13,20 +13,20 @@ from operations.web_search_prompt import (
 )
 
 
-def _user_location(*, timezone: str = "Europe/Moscow") -> dict:
+def _user_location(*, timezone: str = "America/New_York") -> dict:
     return {
         "type": "approximate",
         "approximate": {
-            "country": "RU",
-            "city": "Moscow",
-            "region": "Moscow",
+            "country": "US",
+            "city": "New York",
+            "region": "New York",
             "timezone": timezone,
         },
     }
 
 
 def test_resolve_timezone_from_user_location() -> None:
-    assert resolve_timezone(_user_location(timezone="Europe/Moscow")) == "Europe/Moscow"
+    assert resolve_timezone(_user_location(timezone="America/New_York")) == "America/New_York"
 
 
 def test_resolve_timezone_missing_fallback_utc() -> None:
@@ -40,8 +40,8 @@ def test_resolve_timezone_invalid_fallback_utc() -> None:
 
 def test_build_prompt_includes_date_and_timezone() -> None:
     now = datetime(2026, 5, 26, 9, 0, tzinfo=UTC)
-    prompt = build_web_search_system_prompt(now=now, timezone="Europe/Moscow")
-    assert "Today's date is 2026-05-26 (timezone Europe/Moscow)." in prompt
+    prompt = build_web_search_system_prompt(now=now, timezone="America/New_York")
+    assert "Today's date is 2026-05-26 (timezone America/New_York)." in prompt
     assert "live web" in prompt
     assert '"from the future"' in prompt
 
@@ -54,7 +54,7 @@ def test_build_prompt_date_follows_timezone() -> None:
 
 
 def test_prepend_inserts_system_first() -> None:
-    now = datetime(2026, 5, 26, 12, 0, tzinfo=ZoneInfo("Europe/Moscow"))
+    now = datetime(2026, 5, 26, 12, 0, tzinfo=ZoneInfo("America/New_York"))
     messages = [{"role": "user", "content": "News?"}]
     out = prepend_web_search_system(messages, _user_location(), now=now)
     assert out[0]["role"] == "system"

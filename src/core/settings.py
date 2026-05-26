@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Container default; override with CHAT_PROXY_HOST (e.g. 127.0.0.1 for local dev).
+# Container default: listen on all interfaces. Override with CHAT_PROXY_HOST (e.g. localhost for local dev).
 DEFAULT_BIND_HOST = "0.0.0.0"
 DEFAULT_VLLM_CONNECT_TIMEOUT_SECONDS = 10.0
 

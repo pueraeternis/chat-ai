@@ -14,6 +14,7 @@ from typing import Any
 from adapters.mcp_tool_client import McpToolClient
 from core.ports import InferencePort
 from core.web_search_logging import (
+    log_fetch_page_failed,
     log_fetch_results,
     log_router_result,
     log_search_hits,
@@ -374,7 +375,11 @@ class WebSearchOrchestrator:
         pages: list[dict[str, str]] = []
 
         def fetch_one(url: str) -> dict[str, str] | None:
-            payload = self._mcp.call_tool_sync("fetch_page_markdown", {"url": url})
+            try:
+                payload = self._mcp.call_tool_sync("fetch_page_markdown", {"url": url})
+            except Exception as exc:
+                log_fetch_page_failed(url=url, error=str(exc))
+                return None
             md = payload.get("markdown")
             if not isinstance(md, str) or not md.strip():
                 return None
@@ -385,7 +390,12 @@ class WebSearchOrchestrator:
         with ThreadPoolExecutor(max_workers=min(6, max(1, len(urls)))) as pool:
             futures = {pool.submit(fetch_one, u): u for u in urls}
             for fut in as_completed(futures):
-                row = fut.result()
+                try:
+                    row = fut.result()
+                except Exception as exc:
+                    url = futures.get(fut, "?")
+                    log_fetch_page_failed(url=url, error=str(exc))
+                    continue
                 if row:
                     pages.append(row)
         return pages

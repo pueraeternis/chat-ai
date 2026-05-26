@@ -67,7 +67,7 @@ def test_should_skip(
 
 def test_inject_appends_tool_with_defaults() -> None:
     body: dict[str, Any] = {
-        "messages": [{"role": "user", "content": "новости"}],
+        "messages": [{"role": "user", "content": "news"}],
         "stream": True,
     }
     out = inject_web_search(body)
@@ -76,10 +76,10 @@ def test_inject_appends_tool_with_defaults() -> None:
     tools = out["tools"]
     assert len(tools) == 1
     assert tools[0] == build_web_search_tool(
-        country="RU",
-        city="Saint Petersburg",
-        region="Leningrad Oblast",
-        timezone="Europe/Moscow",
+        country="US",
+        city="New York",
+        region="New York",
+        timezone="America/New_York",
         search_context_size="medium",
     )
 

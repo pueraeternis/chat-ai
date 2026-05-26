@@ -2,7 +2,7 @@
 # Smoke: GET /v1/models via chat-proxy (passthrough to vLLM).
 set -euo pipefail
 
-BASE_URL="${CHAT_PROXY_BASE_URL:-http://127.0.0.1:${CHAT_PROXY_PORT:-18080}/v1}"
+BASE_URL="${CHAT_PROXY_BASE_URL:-http://localhost:${CHAT_PROXY_PORT:-18080}/v1}"
 EXPECTED_ID="${VLLM_SERVED_MODEL:-qwen3-vl-30b-instruct}"
 
 response="$(curl -sfS "${BASE_URL}/models")"

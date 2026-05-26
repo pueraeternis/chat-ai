@@ -15,7 +15,7 @@
 - [x] Remove Triton ports 18100–18102; publish vLLM OpenAI port via `VLLM_PORT` (default host `19000` → container `8000`) — `docker-compose.yml`, `.env`
 - [x] Update Open WebUI `OPENAI_API_BASE_URL` to `http://vllm:8000/v1` and `depends_on: vllm` with healthcheck — `docker-compose.yml`
 - [x] Replace `TRITON_*` / `TRITON_TOKENIZER` with `VLLM_*` in `.env`; document variables in `docs/ARCHITECTURE.md`
-- [x] Add vLLM healthcheck: `GET http://127.0.0.1:8000/v1/models` with adequate `start_period` (model load ~15 min) — `docker-compose.yml`
+- [x] Add vLLM healthcheck: `GET http://localhost:8000/v1/models` with adequate `start_period` (model load ~15 min) — `docker-compose.yml`
 
 ## 2. Remove Triton build artifacts
 

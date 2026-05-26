@@ -24,7 +24,7 @@
 | Where | **chat-proxy** only — final LLM step after fetch, not router, not URL filter, not plain/reasoning/function modes |
 | Language | **English** for all new prompt strings (project standard: prompts, comments, docs in English; user/UI language may be anything) |
 | Date source | `datetime` at request time; format **ISO 8601** date (and optional time) in the prompt |
-| Timezone | Prefer `user_location.approximate.timezone` (IANA, e.g. `Europe/Moscow`); fallback **UTC** if missing or invalid |
+| Timezone | Prefer `user_location.approximate.timezone` (IANA, e.g. `America/New_York`); fallback **UTC** if missing or invalid |
 | Message shape | Prepend a single `role: system` message before existing `messages` for the final completion only (non-stream and stream) |
 | Tool body | Optional v1.1: prepend `retrieved_at` line to `tool_content` — **not required** for plan 06 v1 if system prompt is sufficient |
 | OWUI | No reliance on per-model system prompts in Admin for correctness; proxy owns grounding for `web_search` |
@@ -40,7 +40,7 @@ Helper e.g. `build_web_search_system_prompt(*, now: datetime, timezone: str) -> 
 
 **Must include:**
 
-1. **Explicit today** — e.g. `Today's date is 2026-05-26 (timezone Europe/Moscow).`
+1. **Explicit today** — e.g. `Today's date is 2026-05-26 (timezone America/New_York).`
 2. **Trust tool results** — web search output in the following `tool` message is current factual context from the live web.
 3. **Do not reject by year** — do not dismiss sources as fake or “from the future” only because their publication dates are after your training knowledge cutoff; the provided date above is authoritative for “now”.
 4. **Answer from sources** — summarize what the sources support; say when evidence is insufficient.

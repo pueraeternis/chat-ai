@@ -15,10 +15,10 @@ When the user enables **Proxy Web Search** on a chat, the filter `inlet` appends
   "user_location": {
     "type": "approximate",
     "approximate": {
-      "country": "RU",
-      "city": "Saint Petersburg",
-      "region": "Leningrad Oblast",
-      "timezone": "Europe/Moscow"
+      "country": "US",
+      "city": "New York",
+      "region": "New York",
+      "timezone": "America/New_York"
     }
   }
 }
@@ -64,10 +64,10 @@ Search can still run without them (answer may cite real pages); only the UI feed
 
 | Valve | Default | Purpose |
 |-------|---------|---------|
-| `country` | `RU` | `user_location` only |
-| `city` | `Saint Petersburg` | approximate location |
-| `region` | `Leningrad Oblast` | approximate location |
-| `timezone` | `Europe/Moscow` | IANA timezone |
+| `country` | `US` | `user_location` only |
+| `city` | `New York` | approximate location |
+| `region` | `New York` | approximate location |
+| `timezone` | `America/New_York` | IANA timezone |
 | `search_context_size` | `medium` | `low` \| `medium` \| `high` |
 | `require_web_search_feature` | `false` | If `true`, inject only when `features.web_search` is set |
 

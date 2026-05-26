@@ -27,7 +27,7 @@ Same as connecting **real OpenAI**: hosted search is **opt-in per request** via 
 | When to inject | When the filter runs (user enabled filter on chat), optionally gated on `features.web_search` (valve) |
 | API clients | Unchanged — inject only if they send `tools` themselves |
 | Built-in OWUI Web Search | **Disable** globally when using this filter (avoid double SearXNG) |
-| Default location | Valves on filter (e.g. RU / Saint Petersburg) — required by proxy contract |
+| Default location | Valves on filter (e.g. US / New York) — required by proxy contract |
 | Conflicts | Do not inject if `tools` already has `web_search` or any `function` tool (400 on proxy) |
 | Delivery | Filter source in repo `open_webui/functions/`; install via OWUI Admin import |
 
@@ -91,10 +91,10 @@ Filter class: `toggle = True` so OWUI shows a per-chat toggle ([Filter docs](htt
 
 | Valve | Default | Notes |
 |-------|---------|--------|
-| `country` | `RU` | ISO country for **`user_location` only** (OpenAI tool contract), not SearXNG |
-| `city` | `Saint Petersburg` | Free-text approximate location; **not** a SearXNG locale |
-| `region` | `Leningrad Oblast` | Same |
-| `timezone` | `Europe/Moscow` | IANA timezone for `user_location` |
+| `country` | `US` | ISO country for **`user_location` only** (OpenAI tool contract), not SearXNG |
+| `city` | `New York` | Free-text approximate location; **not** a SearXNG locale |
+| `region` | `New York` | Same |
+| `timezone` | `America/New_York` | IANA timezone for `user_location` |
 | `search_context_size` | `medium` | `low` \| `medium` \| `high` |
 | `require_web_search_feature` | `false` | If `true`, inject only when `body.features.web_search` is set (OWUI Web Search chat toggle) |
 

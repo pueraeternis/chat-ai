@@ -23,7 +23,7 @@ def create_web_search_mcp(*, http_mode: bool = False) -> FastMCP[WebSearchLifesp
     lifespan = shared_tool_lifespan if http_mode else embedded_lifespan
     transport_security = None
     if http_mode:
-        default_hosts = "web-search-mcp:3333,127.0.0.1:3333,localhost:3333"
+        default_hosts = "web-search-mcp:3333,localhost:3333"
         raw_hosts = os.environ.get("WEB_SEARCH_MCP_ALLOWED_HOSTS", default_hosts)
         transport_security = TransportSecuritySettings(
             enable_dns_rebinding_protection=True,

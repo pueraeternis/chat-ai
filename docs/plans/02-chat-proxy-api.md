@@ -41,10 +41,10 @@
     "user_location": {
       "type": "approximate",
       "approximate": {
-        "country": "RU",
-        "city": "Moscow",
-        "region": "Moscow",
-        "timezone": "Europe/Moscow"
+        "country": "US",
+        "city": "New York",
+        "region": "New York",
+        "timezone": "America/New_York"
       }
     }
   }]

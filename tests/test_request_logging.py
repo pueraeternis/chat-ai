@@ -40,7 +40,7 @@ def test_resolve_request_mode_web_search() -> None:
         "tools": [
             {
                 "type": "web_search",
-                "user_location": {"approximate": {"country": "RU"}},
+                "user_location": {"approximate": {"country": "US"}},
             },
         ],
     }

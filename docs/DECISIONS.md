@@ -20,11 +20,11 @@ Chronological journal. New entries are appended at the end.
 
 ## [2026-05-25] Model and runtime parameters
 
-**Decision:** Serve `Qwen/Qwen3-30B-A3B-Instruct-2507` with `--max-model-len 32768`, `--gpu-memory-utilization 0.9`, and `--served-model-name qwen3-30b-instruct` on a single NVIDIA GPU (device `0`, A100 80GB).
+**Decision:** Serve `Qwen/Qwen3-30B-A3B-Instruct-2507` with `--max-model-len 32768`, `--gpu-memory-utilization 0.9`, and `--served-model-name qwen3-30b-instruct` on a single NVIDIA GPU (device `0`, high-VRAM class).
 
 **Reason:** Matches existing Triton vLLM backend settings in `models/qwen3-30b-instruct-2507/1/model.json`. Full 262K native context risks OOM on one GPU; 32K is the operational compromise per model card guidance.
 
-**Rejected:** Defaulting to `--max-model-len 262144` on a single A100 without 1M-context tooling (DCA / multi-GPU setup).
+**Rejected:** Defaulting to `--max-model-len 262144` on a single GPU without 1M-context tooling (DCA / multi-GPU setup).
 
 ## [2026-05-25] Tool calling: Hermes parser, no reasoning stack
 
@@ -38,7 +38,7 @@ Chronological journal. New entries are appended at the end.
 
 **Decision:** Use the official `vllm/vllm-openai` container image (CUDA 12.x tag, vLLM ≥ 0.12 recommended) instead of the custom Triton-based `Dockerfile`. Drop the Triton image build and `vllm_backend` clone.
 
-**Reason:** Host driver 575.51.03 (CUDA 12.9) is backward-compatible with CUDA 12.x runtime images. Pinning vLLM ≥ 0.12 improves MoE (`qwen3_moe`) and tool-calling support versus v0.11.0 bundled in the current Triton image. Simpler operations and smaller maintenance surface.
+**Reason:** Host CUDA 12.x drivers are backward-compatible with CUDA 12.x runtime images. Pinning vLLM ≥ 0.12 improves MoE (`qwen3_moe`) and tool-calling support versus v0.11.0 bundled in the current Triton image. Simpler operations and smaller maintenance surface.
 
 **Rejected:** Continuing to maintain `nvcr.io/nvidia/tritonserver` + pip-installed `vllm==0.11.0` + `vllm_backend` branch `r25.03`.
 
@@ -86,7 +86,7 @@ Chronological journal. New entries are appended at the end.
 
 **Decision:** Add a Python **chat-proxy** service exposing only `POST /v1/chat/completions` and `GET /v1/models` (passthrough). Clients (OpenAI SDK, internal apps) point `base_url` at the proxy, not at vLLM directly. Open WebUI switches to the proxy after plan 02 implementation.
 
-**Reason:** Stable contract for the company; hides vLLM and future inference backends behind an `InferencePort` adapter; central place for system-tool orchestration and response normalization.
+**Reason:** Stable contract for API clients; hides vLLM and future inference backends behind an `InferencePort` adapter; central place for system-tool orchestration and response normalization.
 
 **Rejected:** Adding `/v1/responses` in plan 02; exposing vLLM directly as the long-term public API; inventing non-OpenAI endpoint names.
 
@@ -132,7 +132,7 @@ Chronological journal. New entries are appended at the end.
 
 **Decision:** Copy the **web-search** project into chat-ai under the `web_search` namespace (e.g. `src/web_search/{core,operations,adapters,mcp_servers}`, `config/web_search/`, `tests/web_search/`). Run **web-search-mcp** over **streamable HTTP** plus **SearXNG** in Compose. Imports refactored to `web_search.*` to avoid clashing with proxy `src/core/`.
 
-**Reason:** Single repo for GPU stack + search; no dependency on an external `~/projects/web-search` path at deploy time.
+**Reason:** Single repo for GPU stack + search; no dependency on an external checkout of the standalone web-search project at deploy time.
 
 **Rejected:** Proxy reimplementing SearXNG/Playwright; leaving flat `from core import` packages that collide with proxy layers.
 
@@ -146,7 +146,7 @@ Chronological journal. New entries are appended at the end.
 
 ## [2026-05-26] operations layer vs MCP tools
 
-**Decision:** **`web_search.operations`** holds reusable business logic (`search_urls`, `fetch_page_markdown`, …) with explicit dependencies and `*Result` DTOs. **`web_search.mcp_servers`** registers thin MCP tools that delegate to operations. **Proxy** runs multi-step **orchestration** (router LLM, URL filter, final LLM, `annotations`) and invokes **MCP tools** (`search_urls`, `fetch_page_markdown`), not `operations` directly. Other hosts (e.g. future platform pyAPI) may call the same operations **in-process** without MCP.
+**Decision:** **`web_search.operations`** holds reusable business logic (`search_urls`, `fetch_page_markdown`, …) with explicit dependencies and `*Result` DTOs. **`web_search.mcp_servers`** registers thin MCP tools that delegate to operations. **Proxy** runs multi-step **orchestration** (router LLM, URL filter, final LLM, `annotations`) and invokes **MCP tools** (`search_urls`, `fetch_page_markdown`), not `operations` directly. Other hosts may call the same operations **in-process** without MCP.
 
 **Reason:** One logic path for search/fetch; MCP standardizes the proxy boundary; operations stay portable for non-MCP integrators documented in the original web-search repo.
 
@@ -161,7 +161,7 @@ Chronological journal. New entries are appended at the end.
 - **Incompatible** in the same request with `web_search` or client `function` tools → **400**.
 - Do not accept `reasoning_content` / `reasoning` in incoming `messages` from clients → **400** (multi-turn: only assistant `content` goes back to vLLM).
 
-**Reason:** Company expects “thinking model” UX without a separate Thinking checkpoint; VL-Instruct supports hybrid thinking per Qwen docs.
+**Reason:** Product goal is “thinking model” UX without a separate Thinking checkpoint; VL-Instruct supports hybrid thinking per Qwen docs.
 
 **Rejected:** Default-on Thinking VL model; always-on reasoning for tool-calling paths; streaming reasoning in v1; proxy-side `` tag splitting or last-line answer heuristics.
 
@@ -263,7 +263,7 @@ Always end the status sequence with `done: true`. Citations before or as answer 
 
 - Inject only from Filter `inlet` when the filter is active for the chat (and optionally when `body.features.web_search` is true if valve `require_web_search_feature` is set).
 - Skip injection if `tools` already includes `web_search` or any client `function` tool.
-- Default `user_location` via filter **Valves** (e.g. RU / Saint Petersburg); operators adjust per deployment.
+- Default `user_location` via filter **Valves** (e.g. US / New York); operators adjust per deployment.
 - **Disable** OWUI global Web Search when this filter is the primary UI path.
 
 **Reason:** Avoid `conflicting_tools` 400; avoid duplicate SearXNG; keep API contract explicit for non-UI clients.
@@ -282,7 +282,7 @@ Always end the status sequence with `done: true`. Citations before or as answer 
 
 Implementation: `src/operations/search_locale.py` (`searxng_locale_from_messages`); used in `web_search_pipeline` for MCP `search_urls` and router prompt.
 
-**`user_location`** remains **required** on the tool (OpenAI hosted-tool shape: ISO `country`, optional `city` / `region` / `timezone`). It does **not** select SearXNG locale. There is no SearXNG tag for a city (e.g. no “Saint Petersburg” locale); regional tags like `ru-RU` are optional and not used by this rule.
+**`user_location`** remains **required** on the tool (OpenAI hosted-tool shape: ISO `country`, optional `city` / `region` / `timezone`). It does **not** select SearXNG locale. City names are not valid SearXNG language tags; regional tags like `ru-RU` are optional and not used by this rule.
 
 **Reason:** Operators and users expect search results in the language of the question; SearXNG documents language/region tags `en`, `ru`, `en-US`, `ru-RU`, etc. ([SearXNG locales](https://docs.searxng.org/src/searx.locales.html)).
 

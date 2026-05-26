@@ -59,7 +59,7 @@ def __getattr__(name: str) -> Starlette:
 
 def main() -> None:
     """Run with ``uv run web-search-mcp-http`` or ``python -m mcp_servers.http_asgi``."""
-    # Override bind with WEB_SEARCH_HOST (e.g. 127.0.0.1 for local dev).
+    # Override bind with WEB_SEARCH_HOST (e.g. localhost for local dev).
     host = os.environ.get("WEB_SEARCH_HOST", DEFAULT_BIND_HOST)
     port = int(os.environ.get("WEB_SEARCH_PORT", "3333"))
     uvicorn.run(get_http_app(), host=host, port=port, factory=False)

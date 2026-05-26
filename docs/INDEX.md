@@ -15,7 +15,13 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `docs/plans/03-streaming.md` | Completed: SSE streaming, OWUI status/citations for web_search |
 | `docs/plans/04-open-webui-web-search-filter.md` | Completed: OWUI Filter injects proxy `web_search` for UI |
 | `docs/plans/05-chat-proxy-logging.md` | Completed: structured logging, web_search pipeline visibility |
-| `docs/plans/06-web-search-temporal-grounding.md` | Planned: English system prompt + current date on web_search final LLM |
+| `docs/plans/06-web-search-temporal-grounding.md` | Completed: English system prompt + current date on web_search final LLM |
+| `docs/images/README.md` | Screenshot index (snake_case PNGs for GitHub README) |
+| `docs/images/open_webui_web_search.png` | UI: proxy web search + citations |
+| `docs/images/open_webui_plain_chat.png` | UI: plain chat |
+| `docs/images/open_webui_document_chat.png` | UI: document upload chat |
+| `docs/images/open_webui_url_chat.png` | UI: URL summary chat |
+| `docs/images/multimodal_sample_image.png` | Vision smoke sample image |
 
 ## Runtime / deployment (root)
 
@@ -28,7 +34,7 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `.env` | Local env (gitignored): HF cache, ports, secrets |
 | `.python-version` | Python 3.12 for `uv` |
 | `pyproject.toml` | Dependencies (FastAPI, MCP, Playwright, …) |
-| `README.md` | Quick start |
+| `README.md` | Portfolio overview, quick start, screenshots |
 
 ## Smoke tests (`tests/smoke/`)
 

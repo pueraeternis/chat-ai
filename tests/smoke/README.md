@@ -21,7 +21,7 @@ Direct vLLM (optional, bypass proxy):
 
 ## Chat-proxy contract (plan 02)
 
-All use `CHAT_PROXY_BASE_URL` (default `http://127.0.0.1:${CHAT_PROXY_PORT}/v1`).
+All use `CHAT_PROXY_BASE_URL` (default `http://localhost:${CHAT_PROXY_PORT}/v1`).
 
 | # | Scenario | Script | Typical timeout |
 |---|----------|--------|-----------------|

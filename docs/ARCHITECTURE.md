@@ -11,7 +11,7 @@ Local GPU stack: **OpenAI-compatible chat-proxy**, **Qwen3-VL** on **vLLM**, **w
 | **vLLM** | Internal inference: VL model, Hermes tool calls, Qwen3 reasoning parser |
 | **web-search (MCP HTTP)** | SearXNG + Playwright; MCP tools `search_urls`, `fetch_page_markdown` (logic in `web_search.operations`) |
 | **SearXNG** | External metasearch HTTP API |
-| **Host** | NVIDIA A100 80GB, Hugging Face cache, Docker Compose |
+| **Host** | Single NVIDIA GPU (high VRAM, e.g. 80GB class), Hugging Face cache, Docker Compose |
 
 Users and SDK clients target the **proxy**. vLLM and MCP are not direct public dependencies after plan 02 cutover.
 
@@ -40,6 +40,10 @@ flowchart TB
 ```
 
 **Deployed stack:** Open WebUI → chat-proxy → vLLM; web-search via MCP (SearXNG `en`/`ru` from query script); streaming (plan 03); UI `web_search` via plan 04 Filter; logging plan 05. See [plans/01-vllm-migration.md](plans/01-vllm-migration.md)–[05-chat-proxy-logging.md](plans/05-chat-proxy-logging.md).
+
+**UI examples:** [images/README.md](images/README.md) · web search with citations:
+
+![Open WebUI web search](images/open_webui_web_search.png)
 
 ---
 
@@ -70,10 +74,10 @@ Single public surface: **OpenAI Chat Completions** shape (not full OpenAI Platfo
   "user_location": {
     "type": "approximate",
     "approximate": {
-      "country": "RU",
-      "city": "Moscow",
-      "region": "Moscow",
-      "timezone": "Europe/Moscow"
+      "country": "US",
+      "city": "New York",
+      "region": "New York",
+      "timezone": "America/New_York"
     }
   }
 }
@@ -158,7 +162,7 @@ Operator check: `docker logs chat-proxy 2>&1 | grep request_id=…` or filter `s
 | Image | `vllm/vllm-openai:v0.12.0` (`VLLM_IMAGE_TAG`) | CUDA 12.x |
 | Model | `Qwen/Qwen3-VL-30B-A3B-Instruct` | VL MoE; hybrid thinking |
 | Served name (target) | `qwen3-vl-30b-instruct` | Legacy compose may still use `qwen3-30b-instruct` until plan 02 |
-| Context | `max_model_len=32768` | OOM-safe on A100 80GB with vision |
+| Context | `max_model_len=32768` | OOM-safe on ~80GB VRAM with vision |
 | GPU | `gpu_memory_utilization=0.9`, device `0` | |
 | Tool calling | `--enable-auto-tool-choice`, `--tool-call-parser hermes` | Client `function` tools |
 | Reasoning | `--reasoning-parser qwen3` (plan 02) | With `enable_thinking` per request |
@@ -189,7 +193,7 @@ SDK clients use **OpenAI Chat API** (`tools[].type`). They do **not** speak MCP 
 
 **Transport:** streamable **HTTP** only for proxy↔MCP in production (Compose). MCP **stdio** remains for local dev / external MCP clients, not the proxy hot path.
 
-**In-process `operations`:** used inside each MCP server (and optionally by other integrators such as platform pyAPI). **Not** the primary path from chat-proxy to web-search in v1.
+**In-process `operations`:** used inside each MCP server (and optionally by other in-process integrators). **Not** the primary path from chat-proxy to web-search in v1.
 
 ---
 

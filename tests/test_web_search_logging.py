@@ -14,7 +14,7 @@ from core.request_context import reset_request_id, set_request_id
 from core.settings import ChatProxySettings
 from operations.web_search_pipeline import WebSearchOrchestrator
 
-_USER_LOCATION = {"approximate": {"country": "RU", "city": "Saint Petersburg"}}
+_USER_LOCATION = {"approximate": {"country": "US", "city": "New York"}}
 
 
 _CHAT_PROXY_LOGGERS = (

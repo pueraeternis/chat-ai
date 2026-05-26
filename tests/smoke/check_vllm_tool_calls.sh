@@ -2,7 +2,7 @@
 # Smoke: chat completion with tools returns finish_reason=tool_calls and tool_calls[].
 set -euo pipefail
 
-BASE_URL="${VLLM_BASE_URL:-http://127.0.0.1:${VLLM_PORT:-19000}/v1}"
+BASE_URL="${VLLM_BASE_URL:-http://localhost:${VLLM_PORT:-19000}/v1}"
 MODEL="${VLLM_SERVED_MODEL:-qwen3-vl-30b-instruct}"
 API_KEY="${OPENAI_API_KEY:-dummy}"
 

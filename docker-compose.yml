@@ -43,7 +43,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/models', timeout=5).read()\"",
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/models', timeout=5).read()\"",
         ]
       interval: 30s
       timeout: 10s
@@ -82,7 +82,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:3333/health', timeout=5).read()\"",
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3333/health', timeout=5).read()\"",
         ]
       interval: 30s
       timeout: 10s
@@ -112,7 +112,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).read()\"",
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=5).read()\"",
         ]
       interval: 30s
       timeout: 10s
