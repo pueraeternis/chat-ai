@@ -73,3 +73,92 @@ Chronological journal. New entries are appended at the end.
 **Reason:** Aligns with Qwen function-calling documentation and Open WebUI’s OpenAI client expectations.
 
 **Rejected:** Accepting tool calls visible only as raw `<tool_call>` XML inside `content` without structured `tool_calls`.
+
+## [2026-05-26] Inference model: Qwen3-VL-30B-A3B-Instruct
+
+**Decision:** Serve `Qwen/Qwen3-VL-30B-A3B-Instruct` via vLLM (vision-language MoE, ~30.5B total / ~3.3B active). Rename served model id to `qwen3-vl-30b-instruct` when proxy cutover is implemented (Compose may still expose legacy `qwen3-30b-instruct` until then).
+
+**Reason:** Multimodal chat (images) plus text; hybrid thinking via `enable_thinking` on request (unlike text-only `Qwen3-30B-A3B-Instruct-2507`, which has no thinking toggle). Same Hermes-compatible `<tool_call>` / `<tool_response>` chat template family.
+
+**Rejected:** `Qwen/Qwen3-VL-30B-A3B-Thinking` as the default checkpoint (thinking-only; disabling reasoning is unreliable per HF community reports); keeping text-only `Instruct-2507` when VL is required.
+
+## [2026-05-26] Chat proxy: single OpenAI Chat API surface
+
+**Decision:** Add a Python **chat-proxy** service exposing only `POST /v1/chat/completions` and `GET /v1/models` (passthrough). Clients (OpenAI SDK, internal apps) point `base_url` at the proxy, not at vLLM directly. Open WebUI switches to the proxy after plan 02 implementation.
+
+**Reason:** Stable contract for the company; hides vLLM and future inference backends behind an `InferencePort` adapter; central place for system-tool orchestration and response normalization.
+
+**Rejected:** Adding `/v1/responses` in plan 02; exposing vLLM directly as the long-term public API; inventing non-OpenAI endpoint names.
+
+## [2026-05-26] Two request modes (mutually exclusive tools)
+
+**Decision:**
+
+1. **System tools** — entries in `tools[]` with `type` other than `function` (first: `web_search`). Executed entirely on the proxy; client receives one `chat.completion` with `finish_reason: stop`, final `content`, and optional `annotations` (`url_citation`). No `tool_calls` exposed for system tools.
+2. **Client function calling** — `tools[]` with `type: "function"` only. Proxy forwards to vLLM; response may have `tool_calls`, `content: null`, `finish_reason: tool_calls`. Client executes functions and sends `role: tool` on the next turn (proxy passthrough).
+
+**Conflict rule:** If a request contains both a system tool (e.g. `web_search`) and any `type: "function"` tool, return **400** `invalid_request_error` / `conflicting_tools`.
+
+**Reason:** Matches OpenAI built-in tools vs function-calling separation; avoids ambiguous orchestration.
+
+**Rejected:** Mixed system + client tools in one request (v1); exposing system `web_search` as a client-executed `function` tool.
+
+## [2026-05-26] System tool contract: `web_search`
+
+**Decision:** Enable web search via:
+
+```json
+"tools": [{
+  "type": "web_search",
+  "search_context_size": "low" | "medium" | "high",
+  "user_location": {
+    "type": "approximate",
+    "approximate": { "country", "city", "region", "timezone" }
+  }
+}]
+```
+
+- `user_location` is **required** for `web_search` (stricter than OpenAI’s optional field).
+- `search_context_size` controls URL count and markdown budget in the pipeline (defaults documented in plan 02).
+- v1: **one** system tool per request.
+
+**Orchestration (server-side):** internal router LLM → MCP `search_urls` (10 hits) → LLM URL filter → parallel MCP `fetch_page_markdown` → final LLM → response with `annotations` (`url_citation`) and answer in `content`. System tools are stripped before calls to vLLM.
+
+**Reason:** OpenAI-like “hosted web search” UX (one HTTP round-trip); reuse existing web-search MCP (`search_urls`, `fetch_page_markdown`).
+
+**Rejected:** Primary enablement via `web_search_options` only; mandatory `mcp_web_search` function name in client `tools`; returning raw `<tool_call>` XML to the client for search.
+
+## [2026-05-26] Embed web-search in this repository
+
+**Decision:** Copy the **web-search** project into chat-ai (`src/web_search/` or workspace package): `core`, `operations`, `adapters`, `config`, tests; run MCP HTTP (+ SearXNG) in Compose. Proxy uses an MCP **client** (`tools/call`); business logic stays in web-search operations.
+
+**Reason:** Single repo for GPU stack + search; no dependency on an external `~/projects/web-search` path at deploy time.
+
+**Rejected:** Proxy reimplementing SearXNG/Playwright; mandatory in-process-only integration without MCP in v1 (in-process may follow as optimization).
+
+## [2026-05-26] Optional reasoning (VL-Instruct hybrid)
+
+**Decision:**
+
+- Request: `"reasoning": { "enabled": true }` → proxy sets `chat_template_kwargs: { "enable_thinking": true }` on vLLM.
+- Response: `message.reasoning_content` (chain-of-thought) and `message.content` (final answer). Prefer vLLM `--reasoning-parser qwen3`; proxy fallback parser splits `` / `` if reasoning appears inside `content`.
+- **Incompatible** in the same request with `web_search` or client `function` tools → **400**.
+- Do not accept `reasoning_content` / `reasoning` in incoming `messages` from clients → **400** (multi-turn: only assistant `content` goes back to vLLM).
+
+**Reason:** Company expects “thinking model” UX without a separate Thinking checkpoint; VL-Instruct supports hybrid thinking per Qwen docs.
+
+**Rejected:** Default-on Thinking VL model; always-on reasoning for tool-calling paths; streaming reasoning in v1.
+
+## [2026-05-26] vLLM parsers for plan 02 target stack
+
+**Decision:** Keep `--tool-call-parser hermes` for client `function` tools. Add `--reasoning-parser qwen3` when reasoning is in scope. Smoke-test both parsers together on `Qwen3-VL-30B-A3B-Instruct`.
+
+**Reason:** VL chat template uses `<tool_call>` … `</tool_call>` (Hermes-compatible). Qwen3 reasoning parser extracts thinking before `` per vLLM docs.
+
+**Rejected:** Relying on proxy-only tag parsing without vLLM reasoning parser; `qwen3_xml` unless Hermes smoke fails.
+
+## [2026-05-26] Plan 02 scope boundaries
+
+**Decision:** Plan 02 delivers documentation-aligned proxy + web-search integration + Compose wiring + smoke/contract tests. Out of scope for plan 02: `stream: true` (reject with 400/501), multiple system tools per request, `/v1/responses`, additional system tools beyond `web_search`.
+
+**Reason:** Focused, reviewable wave before streaming and more hosted tools.
