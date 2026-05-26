@@ -14,6 +14,7 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `docs/plans/02-chat-proxy-api.md` | Completed: OpenAI chat proxy, web_search, reasoning, web-search embed |
 | `docs/plans/03-streaming.md` | Completed: SSE streaming, OWUI status/citations for web_search |
 | `docs/plans/04-open-webui-web-search-filter.md` | Completed: OWUI Filter injects proxy `web_search` for UI |
+| `docs/plans/05-chat-proxy-logging.md` | **Active:** structured logging, web_search pipeline visibility |
 
 ## Runtime / deployment (root)
 

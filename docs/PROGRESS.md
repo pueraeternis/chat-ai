@@ -1,12 +1,17 @@
 # Progress
 
-**Active plan:** None (plan 04 completed).
+**Active plan:** [plans/05-chat-proxy-logging.md](plans/05-chat-proxy-logging.md)
 
-**Summary:** Plan 04 done — OWUI Filter, operator setup verified. Model **Citations** + **Status Updates** required on OWUI v0.6.32 for status/citation UI. Follow-up: structured chat-proxy logging; smoke regression checklist item.
+**Summary:** Plan 04 completed. Plan 05 documented — structured chat-proxy logging (`request_id`, web_search stage lines, URL visibility). Implementation pending.
 
 ---
 
 ## Journal
+
+### [2026-05-26] Plan 05 — documentation (chat-proxy logging)
+
+- Recorded decisions: stdlib logging, `request_id`, web_search stage events, privacy limits, JSON optional.
+- Added `docs/plans/05-chat-proxy-logging.md` (events, checklist, acceptance).
 
 ### [2026-05-26] Plan 04 — operator verification & docs (OWUI capabilities)
 

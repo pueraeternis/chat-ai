@@ -88,7 +88,7 @@ Search can still run without them (answer may cite real pages); only the UI feed
 | Double / odd search | Admin → **Web Search** still on — disable it |
 | Debug without UI | `./tests/smoke/check_proxy_web_search.sh`; F12 → Network → completions → `tools` with `web_search` and SSE `event` lines |
 
-chat-proxy does not yet log router/search/fetch steps; use smoke + browser Network until structured logging is added.
+Structured chat-proxy logging (web_search stages, URLs): see [docs/plans/05-chat-proxy-logging.md](../docs/plans/05-chat-proxy-logging.md) (implementation pending). Until then: smoke + `docker logs chat-proxy` (access only) + browser Network.
 
 ### Conflicts
 

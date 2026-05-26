@@ -115,7 +115,7 @@ Optional: **Default Filters** for the model. **Web Search** capability (globe) +
 
 Proxy always emits wrapped SSE `event.status` / `event.citation` during orchestrated `web_search` when pages are fetched. On pinned **open-webui v0.6.32**, the chat UI shows them only if the model has **Status Updates** and **Citations** enabled (Admin → Settings → Models → Capabilities). Without those flags, search may still run and answers may reflect real URLs; operators only miss progress text and source chips.
 
-Verification without UI: `./tests/smoke/check_proxy_web_search.sh`; DevTools → completions stream → `tools` + `"event":{"type":"citation"`. Structured **chat-proxy** logging is not implemented yet (follow-up).
+Verification without UI: `./tests/smoke/check_proxy_web_search.sh`; DevTools → completions stream → `tools` + `"event":{"type":"citation"`. Structured **chat-proxy** logging: [05-chat-proxy-logging.md](05-chat-proxy-logging.md).
 
 ---
 

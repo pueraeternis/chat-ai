@@ -295,3 +295,15 @@ Implementation: `src/operations/search_locale.py` (`searxng_locale_from_messages
 **Reason:** Operator verification showed real fetched content without UI feedback until capabilities were enabled; filter inject does not require the Web Search globe when `require_web_search_feature` is false.
 
 **Rejected:** Assuming plan 03 SSE alone is sufficient for OWUI display without model capability flags on v0.6.32.
+
+## [2026-05-26] Plan 05 — chat-proxy structured logging
+
+**Decision:** Add application logging to **chat-proxy** using Python **`logging`** (stdlib). Configure via `CHAT_PROXY_LOG_LEVEL` (default `INFO`) and optional `CHAT_PROXY_LOG_JSON` for machine-readable lines. Assign a **`request_id`** (UUID) per `POST /v1/chat/completions` and include it on every log record for that request.
+
+**web_search (required operator visibility):** Log explicit stages: request `mode=web_search`; `router_result` (`SEARCH` \| `SKIP`); `search_hits` with URL list from SearXNG; `url_filter_result` with selected URLs; `fetch_results` (requested vs fetched vs failed); `web_search_complete` with outcome and timing. Do **not** log full `messages` or page markdown at INFO.
+
+**Non-search:** Log `mode` (`plain`, `reasoning`, `function`) at request start/end with duration; log validation and upstream errors without bodies.
+
+**Reason:** Plan 04 operator work showed search can run while UI omits status; smoke/DevTools are insufficient for routine ops. Logs must answer “was web_search invoked and what URLs were used?” from `docker logs chat-proxy` alone.
+
+**Rejected:** New logging dependencies (structlog/loguru) in v1; logging full prompts/responses; scope including web-search-mcp or OWUI in the same wave.

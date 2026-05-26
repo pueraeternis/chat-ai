@@ -39,7 +39,7 @@ flowchart TB
   OW -->|RAG embeddings| HF
 ```
 
-**Deployed stack:** Open WebUI → chat-proxy → vLLM; web-search via MCP (SearXNG `en`/`ru` from query script); streaming (plan 03); UI `web_search` via plan 04 Filter. See [plans/01-vllm-migration.md](plans/01-vllm-migration.md)–[04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md).
+**Deployed stack:** Open WebUI → chat-proxy → vLLM; web-search via MCP (SearXNG `en`/`ru` from query script); streaming (plan 03); UI `web_search` via plan 04 Filter; logging plan 05. See [plans/01-vllm-migration.md](plans/01-vllm-migration.md)–[05-chat-proxy-logging.md](plans/05-chat-proxy-logging.md).
 
 ---
 
@@ -124,6 +124,10 @@ Filter appends `user_location` from Valves (OpenAI contract); proxy picks SearXN
 **OWUI v0.6.32:** Enable model **Citations** and **Status Updates** (Settings → Models → Capabilities) so proxy SSE status/citation lines render in chat; global Admin Web Search stays off. Details: [open_webui/README.md](../open_webui/README.md).
 
 Install: [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md).
+
+### Observability (plan 05 — planned)
+
+Today: **uvicorn access logs** only on chat-proxy. **Plan 05** adds structured application logs: `request_id` per completion, `mode` routing, and **web_search** stage lines (router `SEARCH`/`SKIP`, SearXNG URL list, selected URLs, fetch outcomes). Config: `CHAT_PROXY_LOG_LEVEL`, optional `CHAT_PROXY_LOG_JSON`. No message bodies or page markdown at INFO. See [plans/05-chat-proxy-logging.md](plans/05-chat-proxy-logging.md).
 
 ### Not in plan 02 / 03
 
