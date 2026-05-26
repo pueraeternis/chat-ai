@@ -17,10 +17,14 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 
 | Path | Purpose |
 |------|---------|
-| `docker-compose.yml` | Stack: vLLM + Open WebUI today; + proxy, SearXNG, MCP in plan 02 |
-| `.env` | Local env: HF cache, `VLLM_*`, `OPENAI_API_KEY`, RAG model |
+| `docker-compose.yml` | Stack: vLLM, chat-proxy, web-search-mcp, SearXNG, Open WebUI |
+| `Dockerfile.chat-proxy` | chat-proxy image |
+| `Dockerfile.web-search-mcp` | web-search MCP HTTP + Playwright |
+| `.env.example` | Template for Compose, smoke, local proxy (copy to `.env`) |
+| `.env` | Local env (gitignored): HF cache, ports, secrets |
 | `.python-version` | Python 3.12 for `uv` |
-| `pyproject.toml` | Project metadata; deps populated in plan 02 |
+| `pyproject.toml` | Dependencies (FastAPI, MCP, Playwright, …) |
+| `README.md` | Quick start |
 
 ## Smoke tests (`tests/smoke/`)
 
@@ -28,19 +32,24 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 |------|---------|
 | `tests/smoke/check_vllm_models.sh` | `GET /v1/models` on vLLM |
 | `tests/smoke/check_vllm_tool_calls.sh` | vLLM function `tool_calls` |
+| `tests/smoke/check_proxy_models.sh` | Proxy `GET /v1/models` |
 
-Plan 02 will add proxy smoke scripts. Requires running stack (`docker compose up`).
+Requires running stack (`docker compose up`).
 
-## Planned application code (plan 02)
+## Application code (`src/`)
 
 | Path | Purpose |
 |------|---------|
-| `src/adapters/` | vLLM HTTP, MCP HTTP client, FastAPI routes |
-| `src/core/system_tool_registry.py` | *(plan 02)* Map `tools[].type` → MCP server + orchestrator |
-| `src/operations/` | Chat routing, web search pipeline |
-| `src/core/` | Types, errors, request/response models |
+| `src/adapters/http_api.py` | FastAPI: `/v1/models`, `/v1/chat/completions` |
+| `src/adapters/vllm_inference.py` | vLLM HTTP (`InferencePort`) |
+| `src/adapters/mcp_tool_client.py` | MCP streamable HTTP `tools/call` |
+| `src/core/system_tool_registry.py` | Map `tools[].type` → MCP URL + orchestrator |
+| `src/operations/chat_completion.py` | Mode routing and validation |
+| `src/operations/web_search_pipeline.py` | Web search steps 0-5 |
+| `src/operations/reasoning_fallback.py` | Think-tag / `reasoning` normalization |
 | `src/web_search/` | Embedded web-search (core, operations, adapters, mcp_servers) |
-| `tests/` | Unit + integration tests |
+| `config/web_search/` | Limits, fetch policies, SearXNG settings |
+| `tests/` | Proxy + web_search unit tests |
 
 ## Tooling and rules (`.cursor/rules/`)
 

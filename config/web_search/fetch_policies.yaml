@@ -1,0 +1,10 @@
+# Fetch URL policies: internet-only targets and minimal SSRF guard.
+# Allowed schemes and optional extra CIDR denylists are reviewed with security.
+
+allowed_schemes:
+  - http
+  - https
+
+# Additional IPv4/IPv6 CIDR strings to reject after built-in public-IP checks
+# (e.g. block specific ranges still marked "global" by policy).
+extra_blocked_cidrs: []

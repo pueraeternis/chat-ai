@@ -1,7 +1,65 @@
+[build-system]
+requires = ["hatchling>=1.26.0"]
+build-backend = "hatchling.build"
+
 [project]
 name = "chat-ai"
 version = "0.1.0"
-description = "Add your description here"
+description = "OpenAI chat-proxy, vLLM stack, embedded web-search MCP"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "mcp>=1.8.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "httpx>=0.28.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "playwright>=1.49.0",
+    "trafilatura>=2.0.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.scripts]
+chat-proxy = "adapters.http_api:main"
+web-search-mcp-http = "web_search.mcp_servers.http_asgi:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/core", "src/operations", "src/adapters", "src/web_search"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.8.0",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+exclude = [".venv", ".ruff_cache"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "W", "I", "N", "UP", "B", "SIM", "TRY", "PLC", "PLW", "RUF"]
+ignore = ["TRY003", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004", "TC001"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"src/web_search/mcp_servers/tools_*.py" = ["TC002"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.basedpyright]
+pythonVersion = "3.12"
+venvPath = "."
+venv = ".venv"
+extraPaths = ["src"]

@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1
+FROM python:3.12-slim-trixie
+
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+ENV UV_COMPILE_BYTECODE=0
+ENV UV_LINK_MODE=copy
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+
+RUN uv sync --no-dev
+
+ENV PATH="/app/.venv/bin:$PATH"
+
+EXPOSE 8080
+
+CMD ["uvicorn", "adapters.http_api:create_app", "--host", "0.0.0.0", "--port", "8080", "--factory"]

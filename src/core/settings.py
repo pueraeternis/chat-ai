@@ -1,0 +1,42 @@
+"""Environment-backed settings for chat-proxy."""
+
+from __future__ import annotations
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Container default; override with CHAT_PROXY_HOST (e.g. 127.0.0.1 for local dev).
+DEFAULT_BIND_HOST = "0.0.0.0"  # noqa: S104
+
+
+class ChatProxySettings(BaseSettings):
+    """Proxy service configuration."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="CHAT_PROXY_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    host: str = Field(default=DEFAULT_BIND_HOST, description="Bind host.")
+    port: int = Field(default=8080, ge=1, le=65535, description="Bind port.")
+    vllm_base_url: str = Field(
+        default="http://vllm:8000/v1",
+        description="vLLM OpenAI API base URL.",
+    )
+    vllm_timeout_seconds: float = Field(default=600.0, gt=0)
+    default_model: str = Field(default="qwen3-vl-30b-instruct")
+    web_search_mcp_url: str = Field(
+        default="http://web-search-mcp:3333/mcp",
+        description="Streamable HTTP MCP endpoint for web-search.",
+    )
+    mcp_timeout_seconds: float = Field(default=180.0, gt=0)
+    think_start_token: str = Field(
+        default="",
+        description="Fallback think block start (Qwen redacted_reasoning tags).",
+    )
+    think_end_token: str = Field(
+        default="",
+        description="Fallback think block end tag.",
+    )

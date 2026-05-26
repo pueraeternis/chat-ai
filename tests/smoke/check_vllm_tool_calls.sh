@@ -3,7 +3,7 @@
 set -euo pipefail
 
 BASE_URL="${VLLM_BASE_URL:-http://127.0.0.1:${VLLM_PORT:-19000}/v1}"
-MODEL="${VLLM_SERVED_MODEL:-qwen3-30b-instruct}"
+MODEL="${VLLM_SERVED_MODEL:-qwen3-vl-30b-instruct}"
 API_KEY="${OPENAI_API_KEY:-dummy}"
 
 payload="$(MODEL="${MODEL}" python3 <<'PY'

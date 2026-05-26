@@ -1,0 +1,9 @@
+# SearXNG instance config (mounted as /etc/searxng/settings.yml in docker-compose).
+# Upstream defaults ship search.formats: [html] only; format=json then returns 403.
+# use_default_settings merges this file with the image defaults (engines, etc.).
+use_default_settings: true
+
+search:
+  formats:
+    - html
+    - json

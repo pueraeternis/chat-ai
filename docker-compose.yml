@@ -26,7 +26,7 @@ services:
         "--port",
         "8000",
         "--served-model-name",
-        "qwen3-30b-instruct",
+        "qwen3-vl-30b-instruct",
         "--max-model-len",
         "32768",
         "--gpu-memory-utilization",
@@ -34,6 +34,10 @@ services:
         "--enable-auto-tool-choice",
         "--tool-call-parser",
         "hermes",
+        "--reasoning-parser",
+        "qwen3",
+        "--limit-mm-per-prompt.video",
+        "0",
       ]
     healthcheck:
       test:
@@ -46,6 +50,73 @@ services:
       retries: 5
       start_period: 900s
 
+  searxng:
+    image: docker.io/searxng/searxng:2026.5.17-d7e8b7cd1
+    container_name: searxng
+    restart: unless-stopped
+    ports:
+      - "${SEARXNG_PORT:-18081}:8080"
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-dev-only-change-me-or-set-in-.env}
+      FORCE_OWNERSHIP: ${FORCE_OWNERSHIP:-false}
+    volumes:
+      - searxng-config:/etc/searxng
+      - ./config/web_search/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - searxng-cache:/var/cache/searxng
+
+  web-search-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.web-search-mcp
+    container_name: web-search-mcp
+    restart: unless-stopped
+    ports:
+      - "${WEB_SEARCH_MCP_PORT:-13333}:3333"
+    environment:
+      WEB_SEARCH_SEARXNG_BASE_URL: ${WEB_SEARCH_SEARXNG_BASE_URL:-http://searxng:8080}
+      WEB_SEARCH_LIMITS_FILE: /app/config/web_search/default.yaml
+      WEB_SEARCH_FETCH_POLICIES_FILE: /app/config/web_search/fetch_policies.yaml
+    depends_on:
+      - searxng
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:3333/health', timeout=5).read()\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  chat-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.chat-proxy
+    container_name: chat-proxy
+    restart: unless-stopped
+    ports:
+      - "${CHAT_PROXY_PORT:-18080}:8080"
+    environment:
+      CHAT_PROXY_VLLM_BASE_URL: http://vllm:8000/v1
+      CHAT_PROXY_WEB_SEARCH_MCP_URL: http://web-search-mcp:3333/mcp
+      CHAT_PROXY_DEFAULT_MODEL: qwen3-vl-30b-instruct
+    depends_on:
+      vllm:
+        condition: service_healthy
+      web-search-mcp:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).read()\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
   open-webui:
     image: ghcr.io/open-webui/open-webui:v0.6.32
     container_name: open-webui
@@ -54,7 +125,7 @@ services:
       - "${OPEN_WEBUI_PORT:-13000}:8080"
     environment:
       AIOHTTP_CLIENT_TIMEOUT: "600"
-      OPENAI_API_BASE_URL: "http://vllm:8000/v1"
+      OPENAI_API_BASE_URL: "http://chat-proxy:8080/v1"
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
       ENABLE_OLLAMA_API: "false"
       HF_HUB_CACHE: /hf-hub
@@ -68,11 +139,15 @@ services:
         target: /hf-hub
         read_only: true
     depends_on:
+      chat-proxy:
+        condition: service_healthy
       vllm:
         condition: service_healthy
 
 volumes:
   open-webui-data:
+  searxng-config:
+  searxng-cache:
 
 networks:
   default:

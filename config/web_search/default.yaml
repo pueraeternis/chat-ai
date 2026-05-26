@@ -1,0 +1,24 @@
+# Operational limits and defaults (tune for your deployment).
+# Override paths via WEB_SEARCH_LIMITS_FILE / env-specific mounts in Docker.
+
+searxng:
+  # Base URL of the SearXNG instance (no trailing slash required).
+  base_url: "http://localhost:8080"
+  request_timeout_seconds: 30.0
+
+search_urls_defaults:
+  max_results: 10
+  max_results_cap: 50
+  categories: general
+  safe_search: 0
+
+playwright:
+  navigation_timeout_ms: 60000
+  # Reserved for future enforcement (Chromium follows redirects internally).
+  max_redirects: 20
+  max_concurrent_contexts: 4
+  context_queue_wait_timeout_seconds: 120.0
+
+fetch:
+  max_html_bytes: 2097152
+  markdown_max_chars: 200000

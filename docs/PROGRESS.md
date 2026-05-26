@@ -2,11 +2,18 @@
 
 **Active plan:** [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md)
 
-**Summary:** Documented target architecture for an OpenAI-compatible **chat-proxy** (system `web_search`, client `function` tools, optional `reasoning`), **Qwen3-VL-30B-A3B-Instruct** on vLLM, and embedded **web-search** via **MCP HTTP** (system tool registry; proxy orchestrates, MCP servers execute). Implementation not started; vLLM + Open WebUI run without proxy (plan 01).
+**Summary:** Plan 02 implemented in code: **chat-proxy** (FastAPI), embedded **web-search** (`src/web_search/`), Compose stack (vLLM, SearXNG, web-search-mcp, chat-proxy, Open WebUI). Unit tests pass (`uv run pytest`). Full stack smoke requires GPU + `docker compose up`.
 
 ---
 
 ## Journal
+
+### [2026-05-26] Plan 02 — implementation (chat-proxy + web-search embed)
+
+- Copied web-search into `src/web_search/`, `config/web_search/`, `tests/web_search/`; imports `web_search.*`.
+- Added chat-proxy: `src/core/`, `src/operations/`, `src/adapters/http_api.py` (modes, validation, vLLM adapter, MCP client, web search pipeline).
+- Compose: `searxng`, `web-search-mcp`, `chat-proxy`; vLLM `qwen3-vl-30b-instruct`, `--reasoning-parser qwen3`; Open WebUI → proxy.
+- `pyproject.toml` deps; `Dockerfile.chat-proxy`, `Dockerfile.web-search-mcp`; smoke `check_proxy_models.sh`; model id defaults updated.
 
 ### [2026-05-26] Plan 02 — documentation (chat-proxy API)
 
