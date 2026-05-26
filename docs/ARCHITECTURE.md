@@ -39,7 +39,7 @@ flowchart TB
   OW -->|RAG embeddings| HF
 ```
 
-**Deployed stack:** Open WebUI → chat-proxy → vLLM; web-search via MCP; streaming via plan 03. UI web search wiring: plan 04 Filter. See [plans/01-vllm-migration.md](plans/01-vllm-migration.md)–[04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md).
+**Deployed stack:** Open WebUI → chat-proxy → vLLM; web-search via MCP (SearXNG `en`/`ru` from query script); streaming (plan 03); UI `web_search` via plan 04 Filter. See [plans/01-vllm-migration.md](plans/01-vllm-migration.md)–[04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md).
 
 ---
 
@@ -85,6 +85,8 @@ Single public surface: **OpenAI Chat Completions** shape (not full OpenAI Platfo
 
 **Pipeline:** router LLM → MCP `search_urls` (10) → LLM URL filter → MCP `fetch_page_markdown` (parallel) → final LLM → citations in `annotations` (non-stream) and OWUI `citation` events + streamed answer (plan 03 stream).
 
+**SearXNG language:** from last user message (`search_locale.py`): Cyrillic ≥ Latin → `ru`; else `en`. MCP `search_urls` passes this as SearXNG `language` ([locale tags](https://docs.searxng.org/src/searx.locales.html): `en`, `ru`, …). **`user_location`** is required for the API tool shape (country/city/timezone) but does not set SearXNG locale.
+
 ### Client function calling
 
 Standard OpenAI: proxy forwards `tools` to vLLM; returns `tool_calls` / `finish_reason: tool_calls`. Client executes functions and continues with `role: tool`.
@@ -117,7 +119,7 @@ Full contract: [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md), [plans/
 | **OWUI Filter** | `inlet` on active filter | Primary UI path; see `open_webui/functions/` |
 | **OWUI built-in Web Search** | OWUI middleware (not proxy tool) | **Disable** when using Filter — duplicate SearXNG |
 
-Filter appends `user_location` from Valves; proxy runs orchestrated pipeline (plan 02) + SSE (plan 03).
+Filter appends `user_location` from Valves (OpenAI contract); proxy picks SearXNG `en`/`ru` from message text; orchestrated pipeline (plan 02) + SSE (plan 03).
 
 Install: [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md).
 

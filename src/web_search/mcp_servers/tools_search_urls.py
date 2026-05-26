@@ -16,7 +16,7 @@ def register_search_urls_tool(mcp: FastMCP[WebSearchLifespanState]) -> None:
     description = (
         "Run a metasearch query against SearXNG and return result URLs (and optional snippets). "
         "Arguments ``query`` and ``language`` are required; ``language`` must be a SearXNG locale "
-        "code (e.g. en-US, ru-RU). Optional fields fall back to server defaults from config."
+        "code (e.g. en, ru, en-US, ru-RU). Optional fields fall back to server defaults from config."
     )
 
     async def search_urls(
@@ -29,7 +29,7 @@ def register_search_urls_tool(mcp: FastMCP[WebSearchLifespanState]) -> None:
             Field(
                 min_length=2,
                 max_length=32,
-                description="SearXNG language/locale code (e.g. en-US, ru-RU).",
+                description="SearXNG language/locale code (e.g. en, ru, en-US, ru-RU).",
             ),
         ],
         ctx: Context,

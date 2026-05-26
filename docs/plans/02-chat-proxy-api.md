@@ -138,12 +138,14 @@ sequenceDiagram
 
 | Step | Action |
 |------|--------|
-| 0 | Router LLM: search needed? `query` + `language` (from `user_location`) or SKIP |
+| 0 | Router LLM: search needed? `query` + `language` (SearXNG tag `en` or `ru` from **user message script**, see below) or SKIP |
 | 1 | MCP `search_urls`, `max_results=10` |
 | 2 | LLM filter: pick 3–5 URLs from snippets (`temperature=0`) |
 | 3 | Parallel `fetch_page_markdown`; truncate per `search_context_size` budget |
 | 4 | Final LLM with history + synthetic tool turn (`role: tool` content); cite sources |
 | 5 | Build `annotations` from fetched URLs |
+
+**SearXNG `language` (metasearch):** derived from last user message in `src/operations/search_locale.py` — Cyrillic ≥ Latin → `ru`; otherwise `en`. Not from `user_location` (OpenAI field only). Valid tags per [SearXNG locales](https://docs.searxng.org/src/searx.locales.html) (`en`, `ru`, …).
 
 **`search_context_size` budgets** (configure in proxy, tune in implementation):
 

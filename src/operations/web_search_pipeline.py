@@ -12,16 +12,9 @@ from typing import Any
 
 from adapters.mcp_tool_client import McpToolClient
 from core.ports import InferencePort
+from operations.search_locale import searxng_locale_from_messages
 from operations.sse_events import owui_citation_event, owui_status_event, url_citation_annotations
 from operations.stream_passthrough import passthrough_vllm_stream
-
-_COUNTRY_LANGUAGE: dict[str, str] = {
-    "RU": "ru-RU",
-    "US": "en-US",
-    "GB": "en-GB",
-    "DE": "de-DE",
-    "FR": "fr-FR",
-}
 
 
 @dataclass(frozen=True)
@@ -35,12 +28,6 @@ _BUDGETS: dict[str, SearchContextBudget] = {
     "medium": SearchContextBudget(max_urls=5, markdown_max_chars=10_000),
     "high": SearchContextBudget(max_urls=6, markdown_max_chars=16_000),
 }
-
-
-def _language_from_location(user_location: dict[str, Any]) -> str:
-    approx = user_location.get("approximate") or {}
-    country = str(approx.get("country", "US")).upper()
-    return _COUNTRY_LANGUAGE.get(country, "en-US")
 
 
 def _extract_json_object(text: str) -> dict[str, Any] | None:
@@ -97,7 +84,7 @@ class WebSearchOrchestrator:
         model_id = model or self._default_model
         size = str(web_search_tool.get("search_context_size") or "medium").lower()
         budget = _BUDGETS.get(size, _BUDGETS["medium"])
-        language = _language_from_location(user_location)
+        language = searxng_locale_from_messages(messages)
 
         router = self._router(model_id, messages, language)
         if router.get("action") == "SKIP":
@@ -154,7 +141,7 @@ class WebSearchOrchestrator:
         model_id = model or self._default_model
         size = str(web_search_tool.get("search_context_size") or "medium").lower()
         budget = _BUDGETS.get(size, _BUDGETS["medium"])
-        language = _language_from_location(user_location)
+        language = searxng_locale_from_messages(messages)
 
         yield owui_status_event("Searching the web…", done=False, action="web_search")
 

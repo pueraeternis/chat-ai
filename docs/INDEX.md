@@ -62,6 +62,7 @@ Requires running stack (`docker compose up`).
 | `src/core/system_tool_registry.py` | Map `tools[].type` → MCP URL + orchestrator |
 | `src/operations/chat_completion.py` | Mode routing and validation |
 | `src/operations/web_search_pipeline.py` | Web search steps 0-5 |
+| `src/operations/search_locale.py` | SearXNG `en` / `ru` from user message script |
 | `src/operations/reasoning_fallback.py` | Map vLLM `reasoning` field to `reasoning_content` if present |
 | `src/web_search/` | Embedded web-search (core, operations, adapters, mcp_servers) |
 | `config/web_search/` | Limits, fetch policies, SearXNG settings |

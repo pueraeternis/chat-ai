@@ -269,3 +269,21 @@ Always end the status sequence with `done: true`. Citations before or as answer 
 **Reason:** Avoid `conflicting_tools` 400; avoid duplicate SearXNG; keep API contract explicit for non-UI clients.
 
 **Rejected:** Mandatory search for all chats; using External Tool Events API from chat-proxy as OpenAI backend.
+
+## [2026-05-26] SearXNG search language from query script (en / ru)
+
+**Decision:** For `web_search`, set SearXNG `language` from the **last user message text**, not from `user_location.country`:
+
+| User text | SearXNG `language` tag |
+|-----------|-------------------------|
+| Mostly **Latin** (A–Z) | `en` |
+| **Cyrillic** count ≥ Latin | `ru` |
+| No letters / other scripts (CJK, digits, …) | `en` (default) |
+
+Implementation: `src/operations/search_locale.py` (`searxng_locale_from_messages`); used in `web_search_pipeline` for MCP `search_urls` and router prompt.
+
+**`user_location`** remains **required** on the tool (OpenAI hosted-tool shape: ISO `country`, optional `city` / `region` / `timezone`). It does **not** select SearXNG locale. There is no SearXNG tag for a city (e.g. no “Saint Petersburg” locale); regional tags like `ru-RU` are optional and not used by this rule.
+
+**Reason:** Operators and users expect search results in the language of the question; SearXNG documents language/region tags `en`, `ru`, `en-US`, `ru-RU`, etc. ([SearXNG locales](https://docs.searxng.org/src/searx.locales.html)).
+
+**Rejected:** Mapping only `user_location.approximate.country` → `ru-RU` / `en-US`; using city name as SearXNG `language`.

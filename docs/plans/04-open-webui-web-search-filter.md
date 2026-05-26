@@ -91,12 +91,14 @@ Filter class: `toggle = True` so OWUI shows a per-chat toggle ([Filter docs](htt
 
 | Valve | Default | Notes |
 |-------|---------|--------|
-| `country` | `RU` | |
-| `city` | `Saint Petersburg` | |
-| `region` | `Leningrad Oblast` | |
-| `timezone` | `Europe/Moscow` | |
+| `country` | `RU` | ISO country for **`user_location` only** (OpenAI tool contract), not SearXNG |
+| `city` | `Saint Petersburg` | Free-text approximate location; **not** a SearXNG locale |
+| `region` | `Leningrad Oblast` | Same |
+| `timezone` | `Europe/Moscow` | IANA timezone for `user_location` |
 | `search_context_size` | `medium` | `low` \| `medium` \| `high` |
 | `require_web_search_feature` | `false` | If `true`, inject only when `body.features.web_search` is set (OWUI Web Search chat toggle) |
+
+**SearXNG language** after inject: proxy picks `en` or `ru` from the **user message script** ([search_locale.py](../../src/operations/search_locale.py)), independent of these valves.
 
 ### 4.3 OWUI admin setup
 

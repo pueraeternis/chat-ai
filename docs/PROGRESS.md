@@ -2,11 +2,17 @@
 
 **Active plan:** [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md)
 
-**Summary:** Plan 03 done (SSE streaming). Plan 04 documented: OWUI **Filter** injects proxy `web_search` for UI; built-in OWUI Web Search disabled; API remains opt-in via `tools`. Implementation (filter files + tests) next.
+**Summary:** Plan 03 done (SSE streaming). Plan 04 documented (OWUI Filter). SearXNG `en`/`ru` from user message script (`search_locale.py`). Filter implementation still pending.
 
 ---
 
 ## Journal
+
+### [2026-05-26] Web search SearXNG locale (en / ru from query script)
+
+- Added `src/operations/search_locale.py`: Latin → `en`, Cyrillic ≥ Latin → `ru`, else `en`.
+- `web_search_pipeline` uses `searxng_locale_from_messages` instead of `user_location.country` → `ru-RU`/`en-US`.
+- Tests `tests/test_search_locale.py`; updated DECISIONS, ARCHITECTURE, plans 02/04, INDEX.
 
 ### [2026-05-26] Plan 04 — documentation (OWUI web search Filter)
 
