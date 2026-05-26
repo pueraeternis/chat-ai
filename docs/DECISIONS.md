@@ -178,3 +178,73 @@ Chronological journal. New entries are appended at the end.
 **Decision:** Plan 02 delivers documentation-aligned proxy + web-search integration + Compose wiring + smoke/contract tests. Out of scope for plan 02: `stream: true` (reject with 400/501), multiple system tools per request, `/v1/responses`, additional system tools beyond `web_search`.
 
 **Reason:** Focused, reviewable wave before streaming and more hosted tools.
+
+## [2026-05-26] Plan 03 — production streaming on chat-proxy
+
+**Decision:** Plan 03 adds `stream: true` on `POST /v1/chat/completions` for production use (Open WebUI default, OpenAI SDK). Remove the plan 02 reject path once implemented. Non-stream behavior unchanged.
+
+**Reason:** Open WebUI requires SSE; streaming is not a throwaway MVP — implementation may merge in ordered slices (plain → reasoning/functions → web_search orchestration).
+
+**Rejected:** Leaving streaming disabled indefinitely; fake streaming (single-chunk “stream”) for long operations.
+
+## [2026-05-26] Streaming transport: async passthrough to vLLM
+
+**Decision:** Use **async** HTTP (`httpx.AsyncClient`) and FastAPI `StreamingResponse` (`text/event-stream`). For plain chat, reasoning, and client `function` modes: **byte/lines passthrough** of vLLM SSE without reassembling the full completion on the proxy. On client disconnect, **cancel/close** the upstream vLLM stream. Timeouts: short connect timeout; read timeout suitable for long generations (aligned with `CHAT_PROXY_VLLM_TIMEOUT_SECONDS`).
+
+**Reason:** Sync `Client` inside `async def` blocks the event loop; passthrough minimizes latency and parser bugs; cancellation avoids wasted GPU work.
+
+**Rejected:** Buffering entire stream on proxy for passthrough modes; sync-only adapter for production.
+
+## [2026-05-26] Streaming by request mode
+
+**Decision:**
+
+| Mode | `stream: true` behavior |
+|------|-------------------------|
+| Plain chat (+ vision) | Passthrough vLLM SSE |
+| `reasoning.enabled` | Passthrough vLLM SSE with `enable_thinking`; map vLLM `reasoning` → `reasoning_content` only if vLLM emits a separate field in stream chunks (no `` tag parsing) |
+| Client `function` tools | Passthrough vLLM SSE for tool-call deltas |
+| `web_search` | **Orchestrated stream** (see next entry) |
+
+**Reason:** Most modes are thin proxy; web_search is multi-step and needs custom pre-stream events.
+
+**Rejected:** Rejecting all `web_search` + `stream` with 400 in plan 03 (acceptable only as plan 02 interim).
+
+## [2026-05-26] `web_search` orchestrated streaming
+
+**Decision:** When `stream: true` and `tools` include `web_search`:
+
+1. Run router, MCP search, URL filter, and page fetch **without** streaming (same logic as plan 02).
+2. Emit **Open WebUI-compatible SSE status events** during that phase (search visible in UI).
+3. Emit **citation/source** SSE events for fetched URLs (OWUI source chips).
+4. Call vLLM final completion with `stream: true` and **passthrough** answer tokens.
+5. For `stream: false`, keep plan 02 JSON (`content` + `annotations` `url_citation`).
+
+If router returns SKIP, stream a single vLLM completion like plain chat (no MCP status sequence beyond optional “Generating answer…”).
+
+**Reason:** Users see progress during long search; final answer still token-streamed; matches mental model discussed for production.
+
+**Rejected:** Fake stream (one delta with full text after pipeline); streaming only the silent phase with JSON at end.
+
+## [2026-05-26] Open WebUI: SSE status and citations from chat-proxy
+
+**Decision:** When Open WebUI uses chat-proxy as `OPENAI_API_BASE_URL`, progress and sources are delivered in the **same SSE stream** as chat chunks, using the pipelines-compatible wrapper:
+
+```json
+{"event": {"type": "status", "data": {"description": "...", "done": false, "action": "web_search"}}}
+{"event": {"type": "citation", "data": {"document": [...], "metadata": [...], "source": {"name": "...", "url": "..."}}}}
+```
+
+Always end the status sequence with `done: true`. Citations before or as answer streaming starts. Keep OpenAI **`annotations`** (`url_citation`) for non-OWUI SDK clients.
+
+**Reason:** OWUI built-in web search uses internal `event_emitter` (`status`, `citation`); external OpenAI backends do not receive `X-Open-WebUI-Chat-Id` on `/v1/chat/completions`, so `POST /api/v1/chats/.../event` is **not** the primary integration for this deployment.
+
+**Rejected:** Relying on OWUI Admin “Web Search” (SearXNG) in parallel with proxy `web_search` (duplicate search); assuming `message.annotations` alone renders OWUI source chips.
+
+## [2026-05-26] Open WebUI operational note (web search)
+
+**Decision:** When clients use proxy `tools: [{ "type": "web_search" }]`, **disable** Open WebUI’s built-in Web Search for that workflow to avoid double SearXNG and mixed UX. Document in plan 03 and ARCHITECTURE.
+
+**Reason:** Built-in OWUI search runs in OWUI middleware before the model call; proxy `web_search` is a different code path.
+
+**Rejected:** Documenting only proxy annotations without OWUI event format.

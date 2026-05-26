@@ -1,6 +1,6 @@
 # Plan 02 — OpenAI Chat Proxy, web search, VL inference
 
-**Status:** Active (documentation approved 2026-05-26).  
+**Status:** Completed (implementation 2026-05-26). Streaming deferred to [03-streaming.md](03-streaming.md).  
 **Goal:** Add `chat-proxy` with OpenAI-compatible `POST /v1/chat/completions`, system `web_search`, client function calling, optional reasoning; embed web-search; point Open WebUI at the proxy.
 
 **References:** [DECISIONS.md](../DECISIONS.md), [ARCHITECTURE.md](../ARCHITECTURE.md), [Qwen3-VL-30B-A3B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-30B-A3B-Instruct), [Qwen thinking / enable_thinking](https://qwen.readthedocs.io/en/latest/getting_started/quickstart.html), [vLLM reasoning outputs](https://docs.vllm.ai/en/latest/features/reasoning_outputs/).
@@ -102,7 +102,8 @@ Proxy → vLLM `chat_template_kwargs: { "enable_thinking": true }`.
 
 ### Streaming
 
-- v1: `stream: true` → **400** or **501** with clear message.
+- Plan 02 (shipped): `stream: true` → **400** `not_supported` (“Streaming is not supported in v1”).
+- Plan 03: [03-streaming.md](03-streaming.md) — production SSE, OWUI status/citations for `web_search`.
 
 ---
 
@@ -258,7 +259,7 @@ vllm → GPU, HF cache
 ## 7. Out of scope (plan 02)
 
 - `/v1/responses`, Assistants API, embeddings, images API.
-- Streaming.
+- Streaming (see [03-streaming.md](03-streaming.md)).
 - Multiple system tools per request.
 - Second and later MCP servers beyond web-search (registry design only).
 - Proxy in-process calls to `web_search.operations` (optional optimization later).

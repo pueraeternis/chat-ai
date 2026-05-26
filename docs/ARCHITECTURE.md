@@ -39,7 +39,7 @@ flowchart TB
   OW -->|RAG embeddings| HF
 ```
 
-**Current state (before plan 02 code):** Open WebUI → vLLM directly; see [plans/01-vllm-migration.md](plans/01-vllm-migration.md).
+**Deployed stack:** Open WebUI → chat-proxy → vLLM; web-search via MCP. Streaming: plan 03 (not yet in code). See [plans/01-vllm-migration.md](plans/01-vllm-migration.md), [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md).
 
 ---
 
@@ -83,7 +83,7 @@ Single public surface: **OpenAI Chat Completions** shape (not full OpenAI Platfo
 
 **Response:** `finish_reason: stop`, `message.content`, `message.annotations[]` with `url_citation` (not client-visible `tool_calls`).
 
-**Pipeline:** router LLM → MCP `search_urls` (10) → LLM URL filter → MCP `fetch_page_markdown` (parallel) → final LLM → citations in `annotations`.
+**Pipeline:** router LLM → MCP `search_urls` (10) → LLM URL filter → MCP `fetch_page_markdown` (parallel) → final LLM → citations in `annotations` (non-stream) and OWUI `citation` events + streamed answer (plan 03 stream).
 
 ### Client function calling
 
@@ -96,13 +96,25 @@ Standard OpenAI: proxy forwards `tools` to vLLM; returns `tool_calls` / `finish_
 - Not combined with tools in v1.
 - Clients must **not** send `reasoning_content` in history (400).
 
-### Not in v1
+### Streaming (plan 03 — target)
 
-- `stream: true`
+| Mode | `stream: true` |
+|------|----------------|
+| Plain / vision | Passthrough vLLM SSE |
+| Client `function` | Passthrough vLLM SSE (`tool_calls` deltas) |
+| Reasoning | Passthrough + `enable_thinking` (no tag parsing on proxy) |
+| `web_search` | Status + citation SSE events, then passthrough final vLLM stream |
+
+**Current code (plan 02):** `stream: true` → 400 `not_supported`.
+
+**Open WebUI:** Progress and source chips use SSE lines `data: {"event": {"type": "status"|"citation", ...}}` from chat-proxy (not OWUI Admin Web Search middleware). Disable built-in OWUI web search when using proxy `web_search` tool.
+
+Full contract: [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md), [plans/03-streaming.md](plans/03-streaming.md).
+
+### Not in plan 02 / 03
+
 - `/v1/responses`, Assistants, Images API
 - Multiple system tools per request
-
-Full contract: [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md).
 
 ---
 
@@ -186,7 +198,8 @@ Copied from the standalone web-search project into this repo (`src/web_search/`)
 |--------|--------|
 | `tests/smoke/check_vllm_models.sh` | vLLM `/v1/models` |
 | `tests/smoke/check_vllm_tool_calls.sh` | Direct vLLM function calling |
-| *(plan 02)* | Proxy: web_search, functions, reasoning, conflicts |
+| `run_proxy_contract_smoke.sh` | Proxy contract checks (plain, functions, web_search, vision) |
+| *(plan 03)* | Proxy streaming smoke (`curl -N`), OWUI manual |
 
 ---
 
@@ -196,4 +209,5 @@ Copied from the standalone web-search project into this repo (`src/web_search/`)
 - [DECISIONS.md](DECISIONS.md) — decision log
 - [PROGRESS.md](PROGRESS.md) — active plan
 - [plans/01-vllm-migration.md](plans/01-vllm-migration.md) — completed
-- [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md) — active
+- [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md) — completed
+- [plans/03-streaming.md](plans/03-streaming.md) — active

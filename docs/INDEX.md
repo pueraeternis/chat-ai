@@ -11,7 +11,8 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `docs/DECISIONS.md` | Chronological architectural decision journal |
 | `docs/PROGRESS.md` | Active plan pointer + archived wave journal |
 | `docs/plans/01-vllm-migration.md` | Completed: Triton → native vLLM |
-| `docs/plans/02-chat-proxy-api.md` | **Active:** OpenAI chat proxy, web_search, reasoning, web-search embed |
+| `docs/plans/02-chat-proxy-api.md` | Completed: OpenAI chat proxy, web_search, reasoning, web-search embed |
+| `docs/plans/03-streaming.md` | **Active:** SSE streaming, OWUI status/citations for web_search |
 
 ## Runtime / deployment (root)
 
@@ -47,7 +48,7 @@ Requires running stack (`docker compose up`).
 | Path | Purpose |
 |------|---------|
 | `src/adapters/http_api.py` | FastAPI: `/v1/models`, `/v1/chat/completions` |
-| `src/adapters/vllm_inference.py` | vLLM HTTP (`InferencePort`) |
+| `src/adapters/vllm_inference.py` | vLLM HTTP (`InferencePort`; plan 03: async stream) |
 | `src/adapters/mcp_tool_client.py` | MCP streamable HTTP `tools/call` |
 | `src/core/system_tool_registry.py` | Map `tools[].type` → MCP URL + orchestrator |
 | `src/operations/chat_completion.py` | Mode routing and validation |
@@ -85,3 +86,4 @@ Requires running stack (`docker compose up`).
 - vLLM reasoning: [Reasoning outputs](https://docs.vllm.ai/en/latest/features/reasoning_outputs/)
 - vLLM Qwen3-VL: [Usage guide](https://docs.vllm.ai/projects/recipes/en/latest/Qwen/Qwen3-VL.html)
 - Open WebUI: [open-webui](https://github.com/open-webui/open-webui)
+- Open WebUI events: [Plugin events](https://docs.openwebui.com/features/extensibility/plugin/development/events/)

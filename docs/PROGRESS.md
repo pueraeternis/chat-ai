@@ -1,12 +1,19 @@
 # Progress
 
-**Active plan:** [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md)
+**Active plan:** [plans/03-streaming.md](plans/03-streaming.md)
 
-**Summary:** Plan 02 implemented in code: **chat-proxy** (FastAPI), embedded **web-search** (`src/web_search/`), Compose stack (vLLM, SearXNG, web-search-mcp, chat-proxy, Open WebUI). Unit tests pass (`uv run pytest`). Full stack smoke requires GPU + `docker compose up`.
+**Summary:** Plan 02 done in code (chat-proxy, web-search embed, Compose, smoke). Plan 03 documented: production SSE streaming, passthrough modes, orchestrated `web_search` stream with Open WebUI `status`/`citation` events. Implementation in a follow-up chat.
 
 ---
 
 ## Journal
+
+### [2026-05-26] Plan 03 — documentation (streaming + Open WebUI)
+
+- Recorded plan 03 decisions in `docs/DECISIONS.md`: async passthrough, mode matrix, `web_search` orchestrated stream, OWUI SSE `event` wrapper, disable duplicate OWUI web search.
+- Added `docs/plans/03-streaming.md` (contract, OWUI format, checklist, acceptance).
+- Updated `docs/ARCHITECTURE.md` (streaming section, web_search UX path).
+- Updated `docs/INDEX.md`; marked plan 02 completed in `docs/plans/02-chat-proxy-api.md`.
 
 ### [2026-05-26] Plan 02 — implementation (chat-proxy + web-search embed)
 
