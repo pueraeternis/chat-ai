@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from typing import Any
 
@@ -82,5 +83,12 @@ class McpToolClient:
         return payload
 
     def call_tool_sync(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        """Blocking wrapper for sync orchestration paths."""
-        return asyncio.run(self.call_tool(name, arguments))
+        """Blocking wrapper; safe from sync code and from FastAPI async handlers."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.call_tool(name, arguments))
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            return executor.submit(
+                lambda: asyncio.run(self.call_tool(name, arguments)),
+            ).result()

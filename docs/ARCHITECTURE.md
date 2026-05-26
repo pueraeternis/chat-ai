@@ -54,7 +54,7 @@ Single public surface: **OpenAI Chat Completions** shape (not full OpenAI Platfo
 | **Plain chat** | No `tools`, no `reasoning.enabled` | Passthrough to vLLM (text + vision messages) |
 | **Client functions** | `tools[]` with `type: "function"` only | vLLM → `tool_calls` to client |
 | **System web search** | `tools[]` with `type: "web_search"` | Full pipeline on proxy; one final answer |
-| **Reasoning** | `reasoning: { "enabled": true }`, no tools | vLLM `enable_thinking` → `reasoning_content` + `content` |
+| **Reasoning** | `reasoning: { "enabled": true }`, no tools | vLLM `enable_thinking`; CoT typically in `content` (passthrough) |
 
 **400 conflicts:**
 
@@ -92,7 +92,7 @@ Standard OpenAI: proxy forwards `tools` to vLLM; returns `tool_calls` / `finish_
 ### Reasoning (optional)
 
 - Request: `reasoning.enabled: true` → `chat_template_kwargs.enable_thinking: true` on vLLM.
-- Response: `message.reasoning_content` + `message.content` (no raw `` in `content` when parsers work).
+- Response: passthrough from vLLM. On Qwen3-VL-Instruct, chain-of-thought usually appears in `message.content`; `message.reasoning_content` is set only if vLLM exposes a separate `reasoning` field.
 - Not combined with tools in v1.
 - Clients must **not** send `reasoning_content` in history (400).
 

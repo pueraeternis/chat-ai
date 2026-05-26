@@ -1,16 +1,18 @@
-"""Tests for reasoning tag fallback parser."""
+"""Tests for vLLM reasoning field passthrough (no content rewriting)."""
 
-from operations.reasoning_fallback import split_reasoning_from_content
+from operations.reasoning_fallback import normalize_assistant_message
 
 
-def test_split_reasoning_block() -> None:
-    start = "[THINK]"
-    end = "[/THINK]"
-    text = f"{start}step one{end}Final answer."
-    reasoning, content = split_reasoning_from_content(
-        text,
-        think_start=start,
-        think_end=end,
-    )
-    assert reasoning == "step one"
-    assert content == "Final answer."
+def test_normalize_maps_vllm_reasoning_field() -> None:
+    msg = {"role": "assistant", "reasoning": "thoughts", "content": "answer"}
+    out = normalize_assistant_message(msg)
+    assert out["reasoning_content"] == "thoughts"
+    assert out["content"] == "answer"
+    assert "reasoning" not in out
+
+
+def test_normalize_leaves_content_when_no_vllm_reasoning_field() -> None:
+    msg = {"role": "assistant", "content": "Step one.\nFinal answer."}
+    out = normalize_assistant_message(msg)
+    assert out.get("reasoning_content") is None
+    assert out["content"] == "Step one.\nFinal answer."

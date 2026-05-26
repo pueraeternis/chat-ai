@@ -157,13 +157,13 @@ Chronological journal. New entries are appended at the end.
 **Decision:**
 
 - Request: `"reasoning": { "enabled": true }` → proxy sets `chat_template_kwargs: { "enable_thinking": true }` on vLLM.
-- Response: `message.reasoning_content` (chain-of-thought) and `message.content` (final answer). Prefer vLLM `--reasoning-parser qwen3`; proxy fallback parser splits `` / `` if reasoning appears inside `content`.
+- Response: passthrough from vLLM. On Qwen3-VL-Instruct, chain-of-thought usually appears in `message.content`; `message.reasoning_content` only if vLLM exposes a separate `reasoning` field (proxy renames to `reasoning_content`). No proxy tag parsing or content heuristics.
 - **Incompatible** in the same request with `web_search` or client `function` tools → **400**.
 - Do not accept `reasoning_content` / `reasoning` in incoming `messages` from clients → **400** (multi-turn: only assistant `content` goes back to vLLM).
 
 **Reason:** Company expects “thinking model” UX without a separate Thinking checkpoint; VL-Instruct supports hybrid thinking per Qwen docs.
 
-**Rejected:** Default-on Thinking VL model; always-on reasoning for tool-calling paths; streaming reasoning in v1.
+**Rejected:** Default-on Thinking VL model; always-on reasoning for tool-calling paths; streaming reasoning in v1; proxy-side `` tag splitting or last-line answer heuristics.
 
 ## [2026-05-26] vLLM parsers for plan 02 target stack
 

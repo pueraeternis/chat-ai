@@ -114,11 +114,7 @@ class ChatCompletionService:
         vllm_body = _strip_proxy_fields(body)
         vllm_body["chat_template_kwargs"] = {"enable_thinking": True}
         completion = self._inference.chat_completion(vllm_body)
-        return _normalize_reasoning_completion(
-            completion,
-            think_start=self._settings.think_start_token,
-            think_end=self._settings.think_end_token,
-        )
+        return _passthrough_vllm_reasoning_fields(completion)
 
     def _handle_system_tool(
         self,
@@ -197,12 +193,7 @@ def _normalize_tool_calls_completion(completion: dict[str, Any]) -> dict[str, An
     return completion
 
 
-def _normalize_reasoning_completion(
-    completion: dict[str, Any],
-    *,
-    think_start: str,
-    think_end: str,
-) -> dict[str, Any]:
+def _passthrough_vllm_reasoning_fields(completion: dict[str, Any]) -> dict[str, Any]:
     choices = completion.get("choices")
     if not isinstance(choices, list):
         return completion
@@ -211,11 +202,7 @@ def _normalize_reasoning_completion(
             continue
         message = choice.get("message")
         if isinstance(message, dict):
-            choice["message"] = normalize_assistant_message(
-                message,
-                think_start=think_start,
-                think_end=think_end,
-            )
+            choice["message"] = normalize_assistant_message(message)
     return completion
 
 

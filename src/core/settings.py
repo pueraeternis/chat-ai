@@ -6,8 +6,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Container default; override with CHAT_PROXY_HOST (e.g. 127.0.0.1 for local dev).
-DEFAULT_BIND_HOST = "0.0.0.0"  # noqa: S104
-
+DEFAULT_BIND_HOST = "0.0.0.0"
 
 class ChatProxySettings(BaseSettings):
     """Proxy service configuration."""
@@ -32,11 +31,3 @@ class ChatProxySettings(BaseSettings):
         description="Streamable HTTP MCP endpoint for web-search.",
     )
     mcp_timeout_seconds: float = Field(default=180.0, gt=0)
-    think_start_token: str = Field(
-        default="",
-        description="Fallback think block start (Qwen redacted_reasoning tags).",
-    )
-    think_end_token: str = Field(
-        default="",
-        description="Fallback think block end tag.",
-    )

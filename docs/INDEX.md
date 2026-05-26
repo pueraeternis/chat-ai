@@ -30,8 +30,14 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 
 | Path | Purpose |
 |------|---------|
-| `tests/smoke/check_vllm_models.sh` | `GET /v1/models` on vLLM |
-| `tests/smoke/check_vllm_tool_calls.sh` | vLLM function `tool_calls` |
+| `tests/smoke/README.md` | Smoke index, env vars, expected response shapes |
+| `tests/smoke/run_proxy_contract_smoke.sh` | Run all proxy contract checks |
+| `tests/smoke/check_proxy_plain_chat.sh` | Plain chat via proxy |
+| `tests/smoke/check_proxy_function_calling.sh` | Client `function` tool_calls |
+| `tests/smoke/check_proxy_web_search.sh` | System `web_search` + annotations |
+| `tests/smoke/check_proxy_vision.sh` | Multimodal `image_url` (`tests/test_image.jpg`) |
+| `tests/smoke/check_vllm_models.sh` | `GET /v1/models` on vLLM (direct) |
+| `tests/smoke/check_vllm_tool_calls.sh` | vLLM function `tool_calls` (direct) |
 | `tests/smoke/check_proxy_models.sh` | Proxy `GET /v1/models` |
 
 Requires running stack (`docker compose up`).
@@ -46,7 +52,7 @@ Requires running stack (`docker compose up`).
 | `src/core/system_tool_registry.py` | Map `tools[].type` → MCP URL + orchestrator |
 | `src/operations/chat_completion.py` | Mode routing and validation |
 | `src/operations/web_search_pipeline.py` | Web search steps 0-5 |
-| `src/operations/reasoning_fallback.py` | Think-tag / `reasoning` normalization |
+| `src/operations/reasoning_fallback.py` | Map vLLM `reasoning` field to `reasoning_content` if present |
 | `src/web_search/` | Embedded web-search (core, operations, adapters, mcp_servers) |
 | `config/web_search/` | Limits, fetch policies, SearXNG settings |
 | `tests/` | Proxy + web_search unit tests |

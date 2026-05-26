@@ -84,17 +84,14 @@
 
 Proxy → vLLM `chat_template_kwargs: { "enable_thinking": true }`.
 
-**Response:**
+**Response:** passthrough from vLLM. On Qwen3-VL-Instruct, chain-of-thought usually appears in `message.content` only. If vLLM returns a separate `reasoning` field, the proxy maps it to `reasoning_content` (no tag parsing or content splitting).
 
 ```json
 "message": {
   "role": "assistant",
-  "reasoning_content": "...",
   "content": "..."
 }
 ```
-
-Also accept vLLM field `reasoning` and map to `reasoning_content` if needed.
 
 **Not allowed:** `reasoning` / `reasoning_content` on input `messages` (400).
 
@@ -166,7 +163,7 @@ sequenceDiagram
 | `src/core/system_tool_registry.py` | Map `tools[].type` → MCP base URL + orchestrator |
 | `src/operations/chat_completion.py` | Route modes, validate, orchestrate |
 | `src/operations/web_search_pipeline.py` | Steps 0–5; calls MCP `search_urls` / `fetch_page_markdown` |
-| `src/operations/reasoning_fallback.py` | Split `` tags if vLLM leaves them in `content` |
+| `src/operations/reasoning_fallback.py` | Map vLLM `reasoning` → `reasoning_content` if present |
 | `src/web_search/` | Embedded web-search: `operations` + `mcp_servers` (HTTP server) |
 | `src/main.py` or `src/adapters/http_api.py` | FastAPI OpenAI routes |
 
@@ -231,15 +228,14 @@ vllm → GPU, HF cache
 ### 5.4 Reasoning
 
 - [ ] Request field `reasoning.enabled` → `chat_template_kwargs`
-- [ ] Passthrough `reasoning_content` / vLLM `reasoning` in response
-- [ ] Fallback tag parser (configurable think start/end tokens)
+- [ ] Passthrough response; map vLLM `reasoning` → `reasoning_content` when present
 - [ ] Reject reasoning fields in input messages
 
 ### 5.5 Integration
 
 - [ ] vLLM: `--reasoning-parser qwen3`, served name `qwen3-vl-30b-instruct`
 - [ ] Open WebUI `OPENAI_API_BASE_URL` → `http://chat-proxy:…/v1`
-- [ ] Smoke: models, function tool_calls, web_search (mock MCP or live), reasoning on/off
+- [ ] Smoke: models, function tool_calls, web_search (mock MCP or live), vision
 
 ### 5.6 Documentation
 
@@ -253,7 +249,7 @@ vllm → GPU, HF cache
 1. **Client functions:** `tools: [function]` → valid `tool_calls`; second turn with `role: tool` returns assistant text.
 2. **Web search:** `tools: [web_search]` + required `user_location` → single response, `stop`, non-empty `content`, `annotations` with at least one `url_citation` when search ran.
 3. **Conflict:** `web_search` + `function` in one request → 400.
-4. **Reasoning:** `reasoning.enabled: true`, no tools → `reasoning_content` + `content`; not mixed with tools.
+4. **Reasoning:** `reasoning.enabled: true`, no tools → completion with `enable_thinking` (CoT typically in `content`); not mixed with tools.
 5. **Open WebUI:** chat and (if configured) image message via proxy to VL model.
 6. **Migration:** SDK clients change only `base_url` to proxy; model id `qwen3-vl-30b-instruct`.
 

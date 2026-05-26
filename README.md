@@ -12,12 +12,13 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Smoke (with stack running):
+Smoke (with stack running; `set -a && source .env && set +a`):
 
 ```bash
-./tests/smoke/check_proxy_models.sh
-./tests/smoke/check_vllm_tool_calls.sh
+./tests/smoke/run_proxy_contract_smoke.sh   # all proxy API checks
 ```
+
+See [tests/smoke/README.md](tests/smoke/README.md) for individual scripts (plain chat, tools, web_search, vision).
 
 Development:
 
