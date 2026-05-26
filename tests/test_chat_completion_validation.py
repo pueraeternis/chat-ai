@@ -23,8 +23,8 @@ def service(inference: MagicMock) -> ChatCompletionService:
     return ChatCompletionService(inference, settings, build_registry(settings))
 
 
-def test_rejects_stream(service: ChatCompletionService) -> None:
-    with pytest.raises(ValidationError, match="Streaming"):
+def test_handle_rejects_stream_flag(service: ChatCompletionService) -> None:
+    with pytest.raises(ValidationError, match="SSE"):
         service.handle({"messages": [], "stream": True})
 
 

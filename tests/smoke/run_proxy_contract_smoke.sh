@@ -13,6 +13,7 @@ run_one() {
 
 run_one check_proxy_models.sh
 run_one check_proxy_plain_chat.sh
+run_one check_proxy_stream.sh
 run_one check_proxy_function_calling.sh
 run_one check_proxy_web_search.sh
 run_one check_proxy_vision.sh

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 from adapters.mcp_tool_client import McpToolClient
@@ -10,6 +11,7 @@ from core.ports import InferencePort
 from core.settings import ChatProxySettings
 from core.system_tool_registry import SYSTEM_TOOL_TYPES, SystemToolBinding, SystemToolRegistry
 from operations.reasoning_fallback import normalize_assistant_message
+from operations.stream_passthrough import passthrough_vllm_stream
 
 
 def _tools_list(body: dict[str, Any]) -> list[dict[str, Any]]:
@@ -48,12 +50,30 @@ def _reject_reasoning_in_messages(messages: list[Any]) -> None:
             )
 
 
-def _reject_stream(body: dict[str, Any]) -> None:
-    if body.get("stream"):
+def _validate_request(body: dict[str, Any]) -> tuple[list[dict[str, Any]], list[Any]]:
+    tools = _tools_list(body)
+    messages = body.get("messages")
+    if not isinstance(messages, list):
+        raise ValidationError("messages is required", param="messages")
+
+    _reject_reasoning_in_messages(messages)
+
+    func_tools = _function_tools(tools)
+    sys_tools = _system_tools(tools)
+    reasoning_on = _reasoning_enabled(body)
+
+    if func_tools and sys_tools:
         raise ValidationError(
-            "Streaming is not supported in v1",
-            code="not_supported",
+            "Cannot mix system tools and function tools",
+            code="conflicting_tools",
         )
+    if reasoning_on and tools:
+        raise ValidationError(
+            "reasoning cannot be used with tools",
+            code="conflicting_reasoning",
+        )
+
+    return tools, messages
 
 
 class ChatCompletionService:
@@ -70,28 +90,33 @@ class ChatCompletionService:
         self._registry = registry
 
     def handle(self, body: dict[str, Any]) -> dict[str, Any]:
-        _reject_stream(body)
-        tools = _tools_list(body)
-        messages = body.get("messages")
-        if not isinstance(messages, list):
-            raise ValidationError("messages is required", param="messages")
+        if body.get("stream"):
+            raise ValidationError(
+                "stream must use SSE response; set stream false for JSON",
+                code="invalid_request_error",
+            )
+        tools, messages = _validate_request(body)
+        return self._dispatch_json(body, tools, messages)
 
-        _reject_reasoning_in_messages(messages)
+    async def stream(self, body: dict[str, Any]) -> AsyncIterator[bytes]:
+        if not body.get("stream"):
+            raise ValidationError(
+                "stream: true is required for streaming",
+                code="invalid_request_error",
+            )
+        tools, messages = _validate_request(body)
+        async for chunk in self._dispatch_stream(body, tools, messages):
+            yield chunk
 
+    def _dispatch_json(
+        self,
+        body: dict[str, Any],
+        tools: list[dict[str, Any]],
+        messages: list[Any],
+    ) -> dict[str, Any]:
         func_tools = _function_tools(tools)
         sys_tools = _system_tools(tools)
         reasoning_on = _reasoning_enabled(body)
-
-        if func_tools and sys_tools:
-            raise ValidationError(
-                "Cannot mix system tools and function tools",
-                code="conflicting_tools",
-            )
-        if reasoning_on and tools:
-            raise ValidationError(
-                "reasoning cannot be used with tools",
-                code="conflicting_reasoning",
-            )
 
         if sys_tools:
             return self._handle_system_tool(body, sys_tools)
@@ -101,20 +126,65 @@ class ChatCompletionService:
             return self._handle_reasoning(body)
         return self._handle_plain(body)
 
+    async def _dispatch_stream(
+        self,
+        body: dict[str, Any],
+        tools: list[dict[str, Any]],
+        messages: list[Any],
+    ) -> AsyncIterator[bytes]:
+        func_tools = _function_tools(tools)
+        sys_tools = _system_tools(tools)
+        reasoning_on = _reasoning_enabled(body)
+
+        if sys_tools:
+            async for chunk in self._stream_system_tool(body, sys_tools):
+                yield chunk
+            return
+        if func_tools:
+            async for chunk in self._stream_client_functions(body):
+                yield chunk
+            return
+        if reasoning_on:
+            async for chunk in self._stream_reasoning(body):
+                yield chunk
+            return
+        async for chunk in self._stream_plain(body):
+            yield chunk
+
     def _handle_plain(self, body: dict[str, Any]) -> dict[str, Any]:
         vllm_body = _strip_proxy_fields(body)
         return self._inference.chat_completion(vllm_body)
+
+    async def _stream_plain(self, body: dict[str, Any]) -> AsyncIterator[bytes]:
+        vllm_body = _strip_proxy_fields(body)
+        async for chunk in passthrough_vllm_stream(self._inference, vllm_body):
+            yield chunk
 
     def _handle_client_functions(self, body: dict[str, Any]) -> dict[str, Any]:
         vllm_body = _strip_proxy_fields(body)
         completion = self._inference.chat_completion(vllm_body)
         return _normalize_tool_calls_completion(completion)
 
+    async def _stream_client_functions(self, body: dict[str, Any]) -> AsyncIterator[bytes]:
+        vllm_body = _strip_proxy_fields(body)
+        async for chunk in passthrough_vllm_stream(self._inference, vllm_body):
+            yield chunk
+
     def _handle_reasoning(self, body: dict[str, Any]) -> dict[str, Any]:
         vllm_body = _strip_proxy_fields(body)
         vllm_body["chat_template_kwargs"] = {"enable_thinking": True}
         completion = self._inference.chat_completion(vllm_body)
         return _passthrough_vllm_reasoning_fields(completion)
+
+    async def _stream_reasoning(self, body: dict[str, Any]) -> AsyncIterator[bytes]:
+        vllm_body = _strip_proxy_fields(body)
+        vllm_body["chat_template_kwargs"] = {"enable_thinking": True}
+        async for chunk in passthrough_vllm_stream(
+            self._inference,
+            vllm_body,
+            map_reasoning=True,
+        ):
+            yield chunk
 
     def _handle_system_tool(
         self,
@@ -138,6 +208,30 @@ class ChatCompletionService:
         msg = f"Unsupported system tool: {tool_type}"
         raise ValidationError(msg, code="invalid_request_error")
 
+    async def _stream_system_tool(
+        self,
+        body: dict[str, Any],
+        sys_tools: list[dict[str, Any]],
+    ) -> AsyncIterator[bytes]:
+        if len(sys_tools) > 1:
+            raise ValidationError(
+                "Only one system tool per request is supported",
+                code="invalid_request_error",
+            )
+        tool = sys_tools[0]
+        tool_type = str(tool.get("type", ""))
+        if tool_type not in SYSTEM_TOOL_TYPES:
+            raise ValidationError(
+                f"Unsupported system tool type: {tool_type}",
+                code="invalid_request_error",
+            )
+        if tool_type == "web_search":
+            async for chunk in self._stream_web_search(body, tool):
+                yield chunk
+            return
+        msg = f"Unsupported system tool: {tool_type}"
+        raise ValidationError(msg, code="invalid_request_error")
+
     def _handle_web_search(
         self,
         body: dict[str, Any],
@@ -154,18 +248,46 @@ class ChatCompletionService:
         if not isinstance(messages, list):
             raise ValidationError("messages is required", param="messages")
 
-        mcp_url = self._registry.mcp_url_for("web_search")
-        mcp = McpToolClient(mcp_url, timeout_seconds=self._settings.mcp_timeout_seconds)
-        orchestrator = self._registry.create_web_search_orchestrator(
-            self._inference,
-            mcp,
-            default_model=self._settings.default_model,
-        )
+        orchestrator = self._web_search_orchestrator()
         return orchestrator.run(
             model=body.get("model"),
             messages=messages,
             web_search_tool=tool,
             user_location=user_location,
+        )
+
+    async def _stream_web_search(
+        self,
+        body: dict[str, Any],
+        tool: dict[str, Any],
+    ) -> AsyncIterator[bytes]:
+        user_location = tool.get("user_location")
+        if not user_location:
+            raise ValidationError(
+                "user_location is required for web_search",
+                code="missing_required_parameter",
+                param="tools[0].user_location",
+            )
+        messages = body.get("messages")
+        if not isinstance(messages, list):
+            raise ValidationError("messages is required", param="messages")
+
+        orchestrator = self._web_search_orchestrator()
+        async for chunk in orchestrator.run_stream(
+            model=body.get("model"),
+            messages=messages,
+            web_search_tool=tool,
+            user_location=user_location,
+        ):
+            yield chunk
+
+    def _web_search_orchestrator(self) -> Any:
+        mcp_url = self._registry.mcp_url_for("web_search")
+        mcp = McpToolClient(mcp_url, timeout_seconds=self._settings.mcp_timeout_seconds)
+        return self._registry.create_web_search_orchestrator(
+            self._inference,
+            mcp,
+            default_model=self._settings.default_model,
         )
 
 

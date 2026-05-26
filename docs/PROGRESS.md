@@ -2,11 +2,19 @@
 
 **Active plan:** [plans/03-streaming.md](plans/03-streaming.md)
 
-**Summary:** Plan 02 done in code (chat-proxy, web-search embed, Compose, smoke). Plan 03 documented: production SSE streaming, passthrough modes, orchestrated `web_search` stream with Open WebUI `status`/`citation` events. Implementation in a follow-up chat.
+**Summary:** Plan 03 implemented: async SSE passthrough (plain, reasoning, functions), orchestrated `web_search` stream with OWUI `status`/`citation` events, smoke `check_proxy_stream.sh`.
 
 ---
 
 ## Journal
+
+### [2026-05-26] Plan 03 — implementation (SSE streaming)
+
+- `InferencePort.chat_completion_stream`; `VllmInferenceAdapter` async client with connect/read timeouts.
+- `http_api`: `StreamingResponse` for `stream: true`; cancel upstream on client disconnect.
+- Passthrough: `stream_passthrough`, reasoning delta rename in `stream_reasoning`.
+- `WebSearchOrchestrator.run_stream`: status/citation SSE, then vLLM stream + optional `annotations` chunk.
+- Tests: `test_sse_events.py`, `test_streaming.py`; smoke `check_proxy_stream.sh`.
 
 ### [2026-05-26] Plan 03 — documentation (streaming + Open WebUI)
 

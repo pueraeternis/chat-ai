@@ -7,7 +7,7 @@ from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from adapters.vllm_inference import VllmInferenceAdapter
 from core.errors import AppError
@@ -26,6 +26,7 @@ async def lifespan(app: FastAPI):
     app.state.chat_service = ChatCompletionService(inference, settings, registry)
     yield
     inference.close()
+    await inference.aclose()
 
 
 def create_app() -> FastAPI:
@@ -42,7 +43,9 @@ def create_app() -> FastAPI:
         return inference.list_models()
 
     @app.post("/v1/chat/completions", response_model=None)
-    async def chat_completions(request: Request) -> dict[str, Any] | JSONResponse:
+    async def chat_completions(
+        request: Request,
+    ) -> dict[str, Any] | JSONResponse | StreamingResponse:
         body = await request.json()
         if not isinstance(body, dict):
             return JSONResponse(
@@ -50,6 +53,15 @@ def create_app() -> FastAPI:
                 content=openai_error_payload("Request body must be a JSON object"),
             )
         service: ChatCompletionService = request.app.state.chat_service
+        if body.get("stream"):
+            return StreamingResponse(
+                _stream_with_disconnect(service, body, request),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                },
+            )
         return service.handle(body)
 
     @app.api_route("/v1/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
@@ -63,6 +75,22 @@ def create_app() -> FastAPI:
         )
 
     return app
+
+
+async def _stream_with_disconnect(
+    service: ChatCompletionService,
+    body: dict[str, Any],
+    request: Request,
+):
+    gen = service.stream(body)
+    try:
+        async for chunk in gen:
+            if await request.is_disconnected():
+                await gen.aclose()
+                return
+            yield chunk
+    finally:
+        await gen.aclose()
 
 
 def main() -> None:

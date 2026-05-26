@@ -7,6 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Container default; override with CHAT_PROXY_HOST (e.g. 127.0.0.1 for local dev).
 DEFAULT_BIND_HOST = "0.0.0.0"
+DEFAULT_VLLM_CONNECT_TIMEOUT_SECONDS = 10.0
+
 
 class ChatProxySettings(BaseSettings):
     """Proxy service configuration."""
@@ -25,6 +27,10 @@ class ChatProxySettings(BaseSettings):
         description="vLLM OpenAI API base URL.",
     )
     vllm_timeout_seconds: float = Field(default=600.0, gt=0)
+    vllm_connect_timeout_seconds: float = Field(
+        default=DEFAULT_VLLM_CONNECT_TIMEOUT_SECONDS,
+        gt=0,
+    )
     default_model: str = Field(default="qwen3-vl-30b-instruct")
     web_search_mcp_url: str = Field(
         default="http://web-search-mcp:3333/mcp",

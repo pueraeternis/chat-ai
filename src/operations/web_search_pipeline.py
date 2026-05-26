@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
+from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any
 
 from adapters.mcp_tool_client import McpToolClient
 from core.ports import InferencePort
+from operations.sse_events import owui_citation_event, owui_status_event, url_citation_annotations
+from operations.stream_passthrough import passthrough_vllm_stream
 
 _COUNTRY_LANGUAGE: dict[str, str] = {
     "RU": "ru-RU",
@@ -137,6 +141,101 @@ class WebSearchOrchestrator:
             for p in pages
         ]
         return self._build_response(model_id, final_content, annotations)
+
+    async def run_stream(
+        self,
+        *,
+        model: str | None,
+        messages: list[dict[str, Any]],
+        web_search_tool: dict[str, Any],
+        user_location: dict[str, Any],
+    ) -> AsyncIterator[bytes]:
+        """Orchestrated SSE: OWUI status/citations, then vLLM answer stream."""
+        model_id = model or self._default_model
+        size = str(web_search_tool.get("search_context_size") or "medium").lower()
+        budget = _BUDGETS.get(size, _BUDGETS["medium"])
+        language = _language_from_location(user_location)
+
+        yield owui_status_event("Searching the web…", done=False, action="web_search")
+
+        router = await asyncio.to_thread(self._router, model_id, messages, language)
+        if router.get("action") == "SKIP":
+            yield owui_status_event("Generating answer…", done=False, action="web_search")
+            yield owui_status_event("Generating answer…", done=True, action="web_search")
+            async for chunk in passthrough_vllm_stream(
+                self._inference,
+                {"model": model_id, "messages": messages, "temperature": 0.7},
+            ):
+                yield chunk
+            return
+
+        query = str(router.get("query") or "").strip()
+        if not query:
+            query = self._last_user_text(messages)
+
+        search_payload = await asyncio.to_thread(
+            self._mcp.call_tool_sync,
+            "search_urls",
+            {"query": query, "language": language, "max_results": 10},
+        )
+        hits = search_payload.get("results") or []
+        if not hits:
+            yield owui_status_event("Generating answer…", done=False, action="web_search")
+            yield owui_status_event("Generating answer…", done=True, action="web_search")
+            async for chunk in passthrough_vllm_stream(
+                self._inference,
+                {"model": model_id, "messages": messages, "temperature": 0.7},
+            ):
+                yield chunk
+            return
+
+        yield owui_status_event("Fetching pages…", done=False, action="web_search")
+
+        urls = await asyncio.to_thread(self._filter_urls, model_id, hits, budget.max_urls)
+        if not urls:
+            urls = [h["url"] for h in hits[: budget.max_urls] if h.get("url")]
+
+        pages = await asyncio.to_thread(self._fetch_pages, urls, budget.markdown_max_chars)
+        for page in pages:
+            yield owui_citation_event(
+                url=page["url"],
+                title=page.get("title") or page["url"],
+                excerpt=(page.get("markdown") or "")[:500] or None,
+            )
+
+        yield owui_status_event("Generating answer…", done=False, action="web_search")
+        yield owui_status_event("Generating answer…", done=True, action="web_search")
+
+        annotations = url_citation_annotations(pages)
+        final_body = self._final_stream_body(model_id, messages, query, pages)
+        async for chunk in passthrough_vllm_stream(
+            self._inference,
+            final_body,
+            annotations=annotations if annotations else None,
+        ):
+            yield chunk
+
+    def _final_stream_body(
+        self,
+        model: str,
+        messages: list[dict[str, Any]],
+        query: str,
+        pages: list[dict[str, str]],
+    ) -> dict[str, Any]:
+        context = "\n\n---\n\n".join(f"Source: {p['url']}\n{p['markdown']}" for p in pages)
+        tool_content = f"Web search results for query {query!r}:\n\n{context}"
+        return {
+            "model": model,
+            "messages": [
+                *messages,
+                {
+                    "role": "tool",
+                    "content": tool_content,
+                    "name": "web_search",
+                },
+            ],
+            "temperature": 0.3,
+        }
 
     def _router(
         self,
