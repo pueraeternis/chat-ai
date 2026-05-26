@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from core.errors import InferenceError
+from core.log_events import log_upstream_error
 from core.ports import InferencePort
 from core.settings import ChatProxySettings
 
@@ -34,6 +35,7 @@ class VllmInferenceAdapter(InferencePort):
             resp = self._client.get("/models")
             resp.raise_for_status()
         except httpx.HTTPError as exc:
+            log_upstream_error(stage="vllm", tool=None, exc=exc)
             raise InferenceError(f"vLLM models request failed: {exc}") from exc
         return resp.json()
 
@@ -42,6 +44,7 @@ class VllmInferenceAdapter(InferencePort):
             resp = self._client.post("/chat/completions", json=body)
             resp.raise_for_status()
         except httpx.HTTPError as exc:
+            log_upstream_error(stage="vllm", tool=None, exc=exc)
             raise InferenceError(f"vLLM chat completion failed: {exc}") from exc
         return resp.json()
 
@@ -56,4 +59,5 @@ class VllmInferenceAdapter(InferencePort):
                 async for chunk in resp.aiter_bytes():
                     yield chunk
         except httpx.HTTPError as exc:
+            log_upstream_error(stage="vllm", tool=None, exc=exc)
             raise InferenceError(f"vLLM chat completion stream failed: {exc}") from exc

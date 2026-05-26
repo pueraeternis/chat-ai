@@ -101,6 +101,8 @@ services:
       CHAT_PROXY_VLLM_BASE_URL: http://vllm:8000/v1
       CHAT_PROXY_WEB_SEARCH_MCP_URL: http://web-search-mcp:3333/mcp
       CHAT_PROXY_DEFAULT_MODEL: qwen3-vl-30b-instruct
+      # CHAT_PROXY_LOG_LEVEL: INFO
+      # CHAT_PROXY_LOG_JSON: "false"
     depends_on:
       vllm:
         condition: service_healthy

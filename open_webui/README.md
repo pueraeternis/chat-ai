@@ -87,8 +87,7 @@ Search can still run without them (answer may cite real pages); only the UI feed
 | No search at all | **Proxy Web Search** chip off, filter inactive in Functions, or model missing from **Filters** list |
 | Double / odd search | Admin → **Web Search** still on — disable it |
 | Debug without UI | `./tests/smoke/check_proxy_web_search.sh`; F12 → Network → completions → `tools` with `web_search` and SSE `event` lines |
-
-Structured chat-proxy logging (web_search stages, URLs): see [docs/plans/05-chat-proxy-logging.md](../docs/plans/05-chat-proxy-logging.md) (implementation pending). Until then: smoke + `docker logs chat-proxy` (access only) + browser Network.
+| Debug server-side | `docker logs chat-proxy` — look for `request_start mode=web_search`, `router_result`, `search_hits`, `url_filter_result`, `fetch_results` (same `request_id` per request). Optional: `CHAT_PROXY_LOG_LEVEL=DEBUG` for MCP tool timing. See [docs/plans/05-chat-proxy-logging.md](../docs/plans/05-chat-proxy-logging.md). |
 
 ### Conflicts
 

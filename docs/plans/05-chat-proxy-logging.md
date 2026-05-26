@@ -1,6 +1,6 @@
 # Plan 05 — chat-proxy structured logging
 
-**Status:** Active (documentation approved 2026-05-26).  
+**Status:** Completed (2026-05-26).  
 **Goal:** Observable **chat-proxy** logs so operators can see request mode, whether **web_search** ran, and pipeline details (router, SearXNG hits, selected URLs, fetch outcomes) without relying on Open WebUI or browser DevTools.
 
 **Prerequisites:** Plans 02–04 (proxy API, streaming, OWUI filter).  
@@ -144,27 +144,27 @@ No logging of reasoning content or function `tool_calls` payloads in v1.
 
 ### 7.1 Core
 
-- [ ] `logging_config.py` + settings fields
-- [ ] `request_context.py` + middleware/wrapper in `http_api`
-- [ ] Startup log line in FastAPI lifespan
+- [x] `logging_config.py` + settings fields
+- [x] `request_context.py` + middleware/wrapper in `http_api`
+- [x] Startup log line in FastAPI lifespan
 
 ### 7.2 web_search pipeline
 
-- [ ] `web_search_start`, `router_result`, `search_hits` / `search_no_hits`
-- [ ] `url_filter_result`, `fetch_results`, `web_search_complete`
-- [ ] Shared helper to truncate query strings and cap URL list length in logs
+- [x] `web_search_start`, `router_result`, `search_hits` / `search_no_hits`
+- [x] `url_filter_result`, `fetch_results`, `web_search_complete`
+- [x] Shared helper to truncate query strings and cap URL list length in logs
 
 ### 7.3 Routing & errors
 
-- [ ] `chat_completion.py`: mode + `tool_types` on entry
-- [ ] Log validation errors and upstream MCP/vLLM failures
+- [x] `chat_completion.py`: mode + `tool_types` on entry
+- [x] Log validation errors and upstream MCP/vLLM failures
 
 ### 7.4 Tests & docs
 
-- [ ] `tests/test_web_search_logging.py` (caplog: SKIP path, hits path)
-- [ ] `tests/test_request_logging.py` (plain vs web_search mode line)
-- [ ] Update `open_webui/README.md` troubleshooting (point to `docker logs chat-proxy`)
-- [ ] Update `ARCHITECTURE.md` observability subsection
+- [x] `tests/test_web_search_logging.py` (caplog: SKIP path, hits path)
+- [x] `tests/test_request_logging.py` (plain vs web_search mode line)
+- [x] Update `open_webui/README.md` troubleshooting (point to `docker logs chat-proxy`)
+- [x] Update `ARCHITECTURE.md` observability subsection
 
 ### 7.5 Operator verification
 

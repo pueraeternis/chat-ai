@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -10,20 +13,39 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from adapters.vllm_inference import VllmInferenceAdapter
-from core.errors import AppError
+from core.errors import AppError, ValidationError
+from core.log_events import (
+    log_request_end,
+    log_request_start,
+    log_validation_error,
+    resolve_request_mode,
+)
+from core.logging_config import configure_logging
 from core.openai_errors import app_error_handler, openai_error_payload
+from core.request_context import Token, new_request_id, reset_request_id, set_request_id
 from core.settings import ChatProxySettings
 from operations.chat_completion import ChatCompletionService, build_registry
+
+_STARTUP_LOGGER = logging.getLogger("chat_proxy")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = ChatProxySettings()
+    configure_logging(settings)
     inference = VllmInferenceAdapter(settings)
     registry = build_registry(settings)
     app.state.settings = settings
     app.state.inference = inference
     app.state.chat_service = ChatCompletionService(inference, settings, registry)
+    _STARTUP_LOGGER.info(
+        "startup",
+        extra={
+            "bind": f"{settings.host}:{settings.port}",
+            "default_model": settings.default_model,
+            "web_search_mcp_url": settings.web_search_mcp_url,
+        },
+    )
     yield
     inference.close()
     await inference.aclose()
@@ -32,6 +54,7 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title="chat-proxy", lifespan=lifespan)
     app.add_exception_handler(AppError, app_error_handler)
+    app.add_exception_handler(ValidationError, _validation_error_handler)
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -52,17 +75,7 @@ def create_app() -> FastAPI:
                 status_code=400,
                 content=openai_error_payload("Request body must be a JSON object"),
             )
-        service: ChatCompletionService = request.app.state.chat_service
-        if body.get("stream"):
-            return StreamingResponse(
-                _stream_with_disconnect(service, body, request),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "X-Accel-Buffering": "no",
-                },
-            )
-        return service.handle(body)
+        return await _handle_chat_completion(request, body)
 
     @app.api_route("/v1/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
     async def v1_not_implemented(path: str) -> JSONResponse:
@@ -75,6 +88,83 @@ def create_app() -> FastAPI:
         )
 
     return app
+
+
+async def _validation_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+    if isinstance(exc, ValidationError):
+        log_validation_error(code=exc.code, param=exc.param)
+    return await app_error_handler(_request, exc)
+
+
+async def _handle_chat_completion(
+    request: Request,
+    body: dict[str, Any],
+) -> dict[str, Any] | JSONResponse | StreamingResponse:
+    request_id = new_request_id()
+    token = set_request_id(request_id)
+    mode = resolve_request_mode(body)
+    started = time.perf_counter()
+    log_request_start(body)
+
+    service: ChatCompletionService = request.app.state.chat_service
+    is_stream = bool(body.get("stream"))
+    try:
+        if is_stream:
+            return StreamingResponse(
+                _stream_with_logging(
+                    service,
+                    body,
+                    request,
+                    mode=mode,
+                    started=started,
+                    ctx_token=token,
+                ),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+        result = service.handle(body)
+    except Exception:
+        if not is_stream:
+            log_request_end(
+                mode=mode,
+                status="error",
+                duration_ms=(time.perf_counter() - started) * 1000,
+            )
+        raise
+    else:
+        log_request_end(mode=mode, status="ok", duration_ms=(time.perf_counter() - started) * 1000)
+        return result
+    finally:
+        if not is_stream:
+            reset_request_id(token)
+
+
+async def _stream_with_logging(
+    service: ChatCompletionService,
+    body: dict[str, Any],
+    request: Request,
+    *,
+    mode: str,
+    started: float,
+    ctx_token: Token[str | None],
+) -> AsyncIterator[bytes]:
+    status = "ok"
+    try:
+        async for chunk in _stream_with_disconnect(service, body, request):
+            yield chunk
+    except Exception:
+        status = "error"
+        raise
+    finally:
+        log_request_end(
+            mode=mode,
+            status=status,
+            duration_ms=(time.perf_counter() - started) * 1000,
+        )
+        reset_request_id(ctx_token)
 
 
 async def _stream_with_disconnect(
@@ -95,6 +185,7 @@ async def _stream_with_disconnect(
 
 def main() -> None:
     settings = ChatProxySettings()
+    configure_logging(settings)
     host = settings.host
     port = settings.port
     uvicorn.run(

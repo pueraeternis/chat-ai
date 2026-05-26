@@ -7,6 +7,7 @@ from typing import Any
 
 from adapters.mcp_tool_client import McpToolClient
 from core.errors import ValidationError
+from core.log_events import log_route_mode, resolve_request_mode, tool_types_from_body
 from core.ports import InferencePort
 from core.settings import ChatProxySettings
 from core.system_tool_registry import SYSTEM_TOOL_TYPES, SystemToolBinding, SystemToolRegistry
@@ -114,6 +115,7 @@ class ChatCompletionService:
         tools: list[dict[str, Any]],
         messages: list[Any],
     ) -> dict[str, Any]:
+        self._log_dispatch(body)
         func_tools = _function_tools(tools)
         sys_tools = _system_tools(tools)
         reasoning_on = _reasoning_enabled(body)
@@ -132,6 +134,7 @@ class ChatCompletionService:
         tools: list[dict[str, Any]],
         messages: list[Any],
     ) -> AsyncIterator[bytes]:
+        self._log_dispatch(body)
         func_tools = _function_tools(tools)
         sys_tools = _system_tools(tools)
         reasoning_on = _reasoning_enabled(body)
@@ -288,6 +291,13 @@ class ChatCompletionService:
             self._inference,
             mcp,
             default_model=self._settings.default_model,
+        )
+
+    @staticmethod
+    def _log_dispatch(body: dict[str, Any]) -> None:
+        log_route_mode(
+            mode=resolve_request_mode(body),
+            tool_types=tool_types_from_body(body),
         )
 
 

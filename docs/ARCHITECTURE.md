@@ -125,9 +125,20 @@ Filter appends `user_location` from Valves (OpenAI contract); proxy picks SearXN
 
 Install: [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md).
 
-### Observability (plan 05 — planned)
+### Observability (chat-proxy)
 
-Today: **uvicorn access logs** only on chat-proxy. **Plan 05** adds structured application logs: `request_id` per completion, `mode` routing, and **web_search** stage lines (router `SEARCH`/`SKIP`, SearXNG URL list, selected URLs, fetch outcomes). Config: `CHAT_PROXY_LOG_LEVEL`, optional `CHAT_PROXY_LOG_JSON`. No message bodies or page markdown at INFO. See [plans/05-chat-proxy-logging.md](plans/05-chat-proxy-logging.md).
+**uvicorn access logs** plus application logs on stdout (Docker captures). Each `POST /v1/chat/completions` gets a **`request_id`** (UUID) on every line for that request.
+
+| Config | Purpose |
+|--------|---------|
+| `CHAT_PROXY_LOG_LEVEL` | Default `INFO`; use `DEBUG` for MCP `duration_ms` |
+| `CHAT_PROXY_LOG_JSON` | `true` → one JSON object per line (Loki-friendly) |
+
+**Request:** `request_start` / `request_end` with `mode` (`plain`, `reasoning`, `function`, `web_search`), `tool_types`, `web_search_invoked`, `duration_ms`.
+
+**web_search pipeline:** `web_search_start` → `router_result` (`SEARCH` \| `SKIP`) → `search_hits` / `search_no_hits` → `url_filter_result` → `fetch_results` → `web_search_complete`. No full `messages` or page markdown at INFO.
+
+Operator check: `docker logs chat-proxy 2>&1 | grep request_id=…` or filter `search_hits`. Details: [plans/05-chat-proxy-logging.md](plans/05-chat-proxy-logging.md).
 
 ### Not in plan 02 / 03
 

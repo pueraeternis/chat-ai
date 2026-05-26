@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from typing import Any
@@ -14,6 +16,9 @@ from mcp.client.session import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 from core.errors import McpToolError
+from core.log_events import log_event, log_upstream_error
+
+_MCP_LOGGER = logging.getLogger("chat_proxy.upstream")
 
 
 def _parse_tool_dict(result: types.CallToolResult) -> dict[str, Any]:
@@ -49,6 +54,7 @@ class McpToolClient:
             write=120.0,
             pool=30.0,
         )
+        started = time.perf_counter()
         try:
             async with (
                 httpx.AsyncClient(follow_redirects=True, timeout=httpx_timeout) as http_client,
@@ -71,15 +77,29 @@ class McpToolClient:
                     read_timeout_seconds=read_td,
                 )
         except Exception as exc:
+            log_upstream_error(stage="mcp", tool=name, exc=exc)
             raise McpToolError(f"MCP {name!r} failed: {exc}") from exc
 
+        duration_ms = (time.perf_counter() - started) * 1000
+        log_event(
+            _MCP_LOGGER,
+            "mcp_tool_call",
+            level=logging.DEBUG,
+            tool=name,
+            duration_ms=round(duration_ms, 2),
+        )
+
         if result.isError:
-            raise McpToolError(f"MCP {name!r} returned isError")
+            err = McpToolError(f"MCP {name!r} returned isError")
+            log_upstream_error(stage="mcp", tool=name, exc=err)
+            raise err
         payload = _parse_tool_dict(result)
         if not payload.get("ok", True):
-            raise McpToolError(
+            err = McpToolError(
                 f"MCP {name!r} error: {payload.get('code')}: {payload.get('message')}",
             )
+            log_upstream_error(stage="mcp", tool=name, exc=err)
+            raise err
         return payload
 
     def call_tool_sync(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:

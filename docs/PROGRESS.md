@@ -1,12 +1,20 @@
 # Progress
 
-**Active plan:** [plans/05-chat-proxy-logging.md](plans/05-chat-proxy-logging.md)
+**Active plan:** *(none — plan 05 complete)*
 
-**Summary:** Plan 04 completed. Plan 05 documented — structured chat-proxy logging (`request_id`, web_search stage lines, URL visibility). Implementation pending.
+**Summary:** Plan 05 implemented — structured chat-proxy logging (`request_id`, web_search stages, URL visibility, optional JSON).
 
 ---
 
 ## Journal
+
+### [2026-05-26] Plan 05 — implementation (chat-proxy logging)
+
+- `src/core/logging_config.py`, `request_context.py`, `log_events.py`, `web_search_logging.py`; settings `log_level` / `log_json`.
+- `http_api`: lifespan configure + startup line; per-request `request_id`, `request_start` / `request_end`.
+- `web_search_pipeline`: stage events (router, hits, filter, fetch, complete).
+- `chat_completion`: `route_mode`; MCP/vLLM `upstream_error`; validation log.
+- Tests `test_request_logging.py`, `test_web_search_logging.py`; `.env.example`, compose comments; ARCHITECTURE + OWUI README.
 
 ### [2026-05-26] Plan 05 — documentation (chat-proxy logging)
 

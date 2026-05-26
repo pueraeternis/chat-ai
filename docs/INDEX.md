@@ -14,7 +14,7 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `docs/plans/02-chat-proxy-api.md` | Completed: OpenAI chat proxy, web_search, reasoning, web-search embed |
 | `docs/plans/03-streaming.md` | Completed: SSE streaming, OWUI status/citations for web_search |
 | `docs/plans/04-open-webui-web-search-filter.md` | Completed: OWUI Filter injects proxy `web_search` for UI |
-| `docs/plans/05-chat-proxy-logging.md` | **Active:** structured logging, web_search pipeline visibility |
+| `docs/plans/05-chat-proxy-logging.md` | Completed: structured logging, web_search pipeline visibility |
 
 ## Runtime / deployment (root)
 
@@ -60,6 +60,10 @@ Requires running stack (`docker compose up`).
 | `src/adapters/http_api.py` | FastAPI: `/v1/models`, `/v1/chat/completions` |
 | `src/adapters/vllm_inference.py` | vLLM HTTP (`InferencePort`; plan 03: async stream) |
 | `src/adapters/mcp_tool_client.py` | MCP streamable HTTP `tools/call` |
+| `src/core/logging_config.py` | Log level, JSON/text formatters |
+| `src/core/request_context.py` | `request_id` contextvar for correlation |
+| `src/core/log_events.py` | Request mode helpers and HTTP log events |
+| `src/core/web_search_logging.py` | web_search pipeline stage log events |
 | `src/core/system_tool_registry.py` | Map `tools[].type` → MCP URL + orchestrator |
 | `src/operations/chat_completion.py` | Mode routing and validation |
 | `src/operations/web_search_pipeline.py` | Web search steps 0-5 |

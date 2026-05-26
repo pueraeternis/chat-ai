@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -12,6 +13,15 @@ from typing import Any
 
 from adapters.mcp_tool_client import McpToolClient
 from core.ports import InferencePort
+from core.web_search_logging import (
+    log_fetch_results,
+    log_router_result,
+    log_search_hits,
+    log_search_no_hits,
+    log_url_filter_result,
+    log_web_search_complete,
+    log_web_search_start,
+)
 from operations.search_locale import searxng_locale_from_messages
 from operations.sse_events import owui_citation_event, owui_status_event, url_citation_annotations
 from operations.stream_passthrough import passthrough_vllm_stream
@@ -85,9 +95,19 @@ class WebSearchOrchestrator:
         size = str(web_search_tool.get("search_context_size") or "medium").lower()
         budget = _BUDGETS.get(size, _BUDGETS["medium"])
         language = searxng_locale_from_messages(messages)
+        pipeline_start = time.perf_counter()
+
+        log_web_search_start(
+            search_context_size=size,
+            searxng_language=language,
+            budget_max_urls=budget.max_urls,
+        )
 
         router = self._router(model_id, messages, language)
+        log_router_result(router)
         if router.get("action") == "SKIP":
+            duration_ms = (time.perf_counter() - pipeline_start) * 1000
+            log_web_search_complete(outcome="skip", pages_fetched=0, duration_ms=duration_ms)
             completion = self._inference.chat_completion(
                 {"model": model_id, "messages": messages, "temperature": 0.7},
             )
@@ -104,17 +124,29 @@ class WebSearchOrchestrator:
         )
         hits = search_payload.get("results") or []
         if not hits:
+            log_search_no_hits(query=query)
+            duration_ms = (time.perf_counter() - pipeline_start) * 1000
+            log_web_search_complete(outcome="no_hits", pages_fetched=0, duration_ms=duration_ms)
             completion = self._inference.chat_completion(
                 {"model": model_id, "messages": messages, "temperature": 0.7},
             )
             return self._build_response(model_id, _assistant_text(completion), [])
 
-        urls = self._filter_urls(model_id, hits, budget.max_urls)
-        if not urls:
-            urls = [h["url"] for h in hits[: budget.max_urls] if h.get("url")]
+        log_search_hits(query=query, hits=hits)
+
+        urls, fallback_used = self._select_urls(model_id, hits, budget.max_urls)
+        log_url_filter_result(selected_urls=urls, fallback_used=fallback_used)
 
         pages = self._fetch_pages(urls, budget.markdown_max_chars)
+        self._log_fetch_outcome(urls, pages)
+
         final_content = self._final_answer(model_id, messages, query, pages)
+        duration_ms = (time.perf_counter() - pipeline_start) * 1000
+        log_web_search_complete(
+            outcome="success",
+            pages_fetched=len(pages),
+            duration_ms=duration_ms,
+        )
         annotations = [
             {
                 "type": "url_citation",
@@ -143,10 +175,20 @@ class WebSearchOrchestrator:
         budget = _BUDGETS.get(size, _BUDGETS["medium"])
         language = searxng_locale_from_messages(messages)
 
+        pipeline_start = time.perf_counter()
+        log_web_search_start(
+            search_context_size=size,
+            searxng_language=language,
+            budget_max_urls=budget.max_urls,
+        )
+
         yield owui_status_event("Searching the web…", done=False, action="web_search")
 
         router = await asyncio.to_thread(self._router, model_id, messages, language)
+        log_router_result(router)
         if router.get("action") == "SKIP":
+            duration_ms = (time.perf_counter() - pipeline_start) * 1000
+            log_web_search_complete(outcome="skip", pages_fetched=0, duration_ms=duration_ms)
             yield owui_status_event("Generating answer…", done=False, action="web_search")
             yield owui_status_event("Generating answer…", done=True, action="web_search")
             async for chunk in passthrough_vllm_stream(
@@ -167,6 +209,9 @@ class WebSearchOrchestrator:
         )
         hits = search_payload.get("results") or []
         if not hits:
+            log_search_no_hits(query=query)
+            duration_ms = (time.perf_counter() - pipeline_start) * 1000
+            log_web_search_complete(outcome="no_hits", pages_fetched=0, duration_ms=duration_ms)
             yield owui_status_event("Generating answer…", done=False, action="web_search")
             yield owui_status_event("Generating answer…", done=True, action="web_search")
             async for chunk in passthrough_vllm_stream(
@@ -176,19 +221,33 @@ class WebSearchOrchestrator:
                 yield chunk
             return
 
+        log_search_hits(query=query, hits=hits)
+
         yield owui_status_event("Fetching pages…", done=False, action="web_search")
 
-        urls = await asyncio.to_thread(self._filter_urls, model_id, hits, budget.max_urls)
-        if not urls:
-            urls = [h["url"] for h in hits[: budget.max_urls] if h.get("url")]
+        urls, fallback_used = await asyncio.to_thread(
+            self._select_urls,
+            model_id,
+            hits,
+            budget.max_urls,
+        )
+        log_url_filter_result(selected_urls=urls, fallback_used=fallback_used)
 
         pages = await asyncio.to_thread(self._fetch_pages, urls, budget.markdown_max_chars)
+        self._log_fetch_outcome(urls, pages)
         for page in pages:
             yield owui_citation_event(
                 url=page["url"],
                 title=page.get("title") or page["url"],
                 excerpt=(page.get("markdown") or "")[:500] or None,
             )
+
+        duration_ms = (time.perf_counter() - pipeline_start) * 1000
+        log_web_search_complete(
+            outcome="success",
+            pages_fetched=len(pages),
+            duration_ms=duration_ms,
+        )
 
         yield owui_status_event("Generating answer…", done=False, action="web_search")
         yield owui_status_event("Generating answer…", done=True, action="web_search")
@@ -253,6 +312,28 @@ class WebSearchOrchestrator:
         if not parsed.get("language"):
             parsed["language"] = language
         return parsed
+
+    def _select_urls(
+        self,
+        model: str,
+        hits: list[dict[str, Any]],
+        max_urls: int,
+    ) -> tuple[list[str], bool]:
+        urls = self._filter_urls(model, hits, max_urls)
+        if urls:
+            return urls, False
+        fallback = [h["url"] for h in hits[:max_urls] if h.get("url")]
+        return fallback, True
+
+    @staticmethod
+    def _log_fetch_outcome(requested_urls: list[str], pages: list[dict[str, str]]) -> None:
+        fetched_urls = [p["url"] for p in pages]
+        failed_urls = [u for u in requested_urls if u not in set(fetched_urls)]
+        log_fetch_results(
+            requested_urls=requested_urls,
+            fetched_urls=fetched_urls,
+            failed_urls=failed_urls,
+        )
 
     def _filter_urls(self, model: str, hits: list[dict[str, Any]], max_urls: int) -> list[str]:
         snippets = "\n".join(
