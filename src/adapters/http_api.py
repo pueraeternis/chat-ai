@@ -22,7 +22,7 @@ from core.log_events import (
 )
 from core.logging_config import configure_logging
 from core.openai_errors import app_error_handler, openai_error_payload
-from core.request_context import Token, new_request_id, reset_request_id, set_request_id
+from core.request_context import new_request_id, reset_request_id, set_request_id
 from core.settings import ChatProxySettings
 from operations.chat_completion import ChatCompletionService, build_registry
 
@@ -110,14 +110,17 @@ async def _handle_chat_completion(
     is_stream = bool(body.get("stream"))
     try:
         if is_stream:
+            # request_id is re-bound inside the stream generator (Starlette runs it
+            # in a different task); reset the handler token before returning.
+            reset_request_id(token)
             return StreamingResponse(
                 _stream_with_logging(
                     service,
                     body,
                     request,
+                    request_id=request_id,
                     mode=mode,
                     started=started,
-                    ctx_token=token,
                 ),
                 media_type="text/event-stream",
                 headers={
@@ -147,10 +150,11 @@ async def _stream_with_logging(
     body: dict[str, Any],
     request: Request,
     *,
+    request_id: str,
     mode: str,
     started: float,
-    ctx_token: Token[str | None],
 ) -> AsyncIterator[bytes]:
+    stream_token = set_request_id(request_id)
     status = "ok"
     try:
         async for chunk in _stream_with_disconnect(service, body, request):
@@ -164,7 +168,7 @@ async def _stream_with_logging(
             status=status,
             duration_ms=(time.perf_counter() - started) * 1000,
         )
-        reset_request_id(ctx_token)
+        reset_request_id(stream_token)
 
 
 async def _stream_with_disconnect(

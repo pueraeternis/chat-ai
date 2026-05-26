@@ -86,6 +86,7 @@ Search can still run without them (answer may cite real pages); only the UI feed
 | No source chips / footnotes | Enable **Citations** on the model |
 | No search at all | **Proxy Web Search** chip off, filter inactive in Functions, or model missing from **Filters** list |
 | Double / odd search | Admin → **Web Search** still on — disable it |
+| Answer + sources OK, then red `TransferEncodingError` / incomplete stream | Old **chat-proxy** bug: `request_id` reset in wrong async context on stream close. Rebuild image: `docker compose build chat-proxy && docker compose up -d chat-proxy`. Logs: `ValueError: Token was created in a different Context` in `_stream_with_logging` |
 | Debug without UI | `./tests/smoke/check_proxy_web_search.sh`; F12 → Network → completions → `tools` with `web_search` and SSE `event` lines |
 | Debug server-side | `docker logs chat-proxy` — look for `request_start mode=web_search`, `router_result`, `search_hits`, `url_filter_result`, `fetch_results` (same `request_id` per request). Optional: `CHAT_PROXY_LOG_LEVEL=DEBUG` for MCP tool timing. See [docs/plans/05-chat-proxy-logging.md](../docs/plans/05-chat-proxy-logging.md). |
 

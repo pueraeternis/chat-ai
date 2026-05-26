@@ -307,3 +307,11 @@ Implementation: `src/operations/search_locale.py` (`searxng_locale_from_messages
 **Reason:** Plan 04 operator work showed search can run while UI omits status; smoke/DevTools are insufficient for routine ops. Logs must answer “was web_search invoked and what URLs were used?” from `docker logs chat-proxy` alone.
 
 **Rejected:** New logging dependencies (structlog/loguru) in v1; logging full prompts/responses; scope including web-search-mcp or OWUI in the same wave.
+
+## [2026-05-26] SSE stream: `request_id` contextvar scope
+
+**Decision:** For `stream: true`, log `request_start` in the route handler with `request_id` set via `contextvars`, then **reset the handler token** before returning `StreamingResponse`. Re-bind `request_id` at the start of the SSE body generator and call `request_end` + `reset_request_id` in that generator’s `finally` (same async task Starlette uses for `stream_response`).
+
+**Reason:** Resetting a `ContextVar` token from the handler after the stream finishes fails with `ValueError: Token was created in a different Context`, aborts ASGI, and OWUI shows `TransferEncodingError` even when web search and the answer succeeded.
+
+**Rejected:** Passing the handler’s reset token into `_stream_with_logging`; skipping reset on streams (leaks context between requests on shared workers).

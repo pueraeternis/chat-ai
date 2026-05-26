@@ -2,11 +2,18 @@
 
 **Active plan:** *(none — plan 05 complete)*
 
-**Summary:** Plan 05 implemented — structured chat-proxy logging (`request_id`, web_search stages, URL visibility, optional JSON).
+**Summary:** Plan 05 complete; OWUI streaming fix for `request_id` context cleanup.
 
 ---
 
 ## Journal
+
+### [2026-05-26] Fix — SSE `request_id` context on stream close
+
+- **Symptom (OWUI):** long answer + sources OK, then `TransferEncodingError: Not enough data to satisfy transfer length header`; `docker logs` showed `ValueError: Token was created in a different Context` in `_stream_with_logging`.
+- **Cause:** `reset_request_id` ran in Starlette’s stream task while the token was created in the route handler task (`contextvars`).
+- **Fix:** `http_api` — reset handler token before returning `StreamingResponse`; bind/reset `request_id` inside the stream generator. Test: `tests/test_http_stream_context.py`.
+- **Deploy:** rebuild `chat-proxy` image (`docker compose build chat-proxy && docker compose up -d chat-proxy`).
 
 ### [2026-05-26] Plan 05 — implementation (chat-proxy logging)
 

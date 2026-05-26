@@ -117,7 +117,7 @@ No logging of reasoning content or function `tool_calls` payloads in v1.
 | `src/core/logging_config.py` | `configure_logging(settings)` — level, JSON vs text formatter, uvicorn log level alignment |
 | `src/core/settings.py` | `log_level: str`, `log_json: bool` |
 | `src/core/request_context.py` | `contextvars` for `request_id`; context manager or middleware helper |
-| `src/adapters/http_api.py` | Assign `request_id`; `request_start` / `request_end`; call `configure_logging` in lifespan |
+| `src/adapters/http_api.py` | Assign `request_id`; `request_start` / `request_end`; call `configure_logging` in lifespan. **Streams:** reset handler token before `StreamingResponse`; `set_request_id` / `reset_request_id` inside `_stream_with_logging` (same task as `request_end`) |
 | `src/operations/chat_completion.py` | Log mode routing once |
 | `src/operations/web_search_pipeline.py` | Stage logs (§4) |
 | `src/adapters/mcp_tool_client.py` | DEBUG: tool name + duration_ms (optional v1) |
@@ -168,8 +168,8 @@ No logging of reasoning content or function `tool_calls` payloads in v1.
 
 ### 7.5 Operator verification
 
-- [ ] `docker compose up` → one plain chat → `request_start mode=plain`, no `web_search_*`
-- [ ] OWUI chat with Proxy Web Search → `mode=web_search`, full stage lines, URLs visible
+- [x] `docker compose up` → plain + web_search smoke; logs show expected stages (2026-05-26)
+- [ ] OWUI chat with Proxy Web Search → `mode=web_search`, full stage lines, URLs visible; **no** `TransferEncodingError` after answer (requires post-fix `chat-proxy` image)
 - [ ] Router SKIP question → `action=SKIP`, no `search_hits`
 - [ ] `CHAT_PROXY_LOG_LEVEL=DEBUG` shows MCP tool timing
 

@@ -140,6 +140,8 @@ Install: [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-sear
 
 Operator check: `docker logs chat-proxy 2>&1 | grep request_id=…` or filter `search_hits`. Details: [plans/05-chat-proxy-logging.md](plans/05-chat-proxy-logging.md).
 
+**Streaming (`stream: true`, OWUI default):** `request_id` is set in the route handler for `request_start`, then re-bound at the start of the SSE body generator (Starlette runs it in a separate async task). `request_end` and `reset_request_id` run in that same generator task so the stream is not torn down with `ValueError: Token was created in a different Context` (which surfaced in OWUI as `TransferEncodingError` after an otherwise successful web search).
+
 ### Not in plan 02 / 03
 
 - `/v1/responses`, Assistants, Images API
