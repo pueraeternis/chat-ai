@@ -15,6 +15,7 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `docs/plans/03-streaming.md` | Completed: SSE streaming, OWUI status/citations for web_search |
 | `docs/plans/04-open-webui-web-search-filter.md` | Completed: OWUI Filter injects proxy `web_search` for UI |
 | `docs/plans/05-chat-proxy-logging.md` | Completed: structured logging, web_search pipeline visibility |
+| `docs/plans/06-web-search-temporal-grounding.md` | Planned: English system prompt + current date on web_search final LLM |
 
 ## Runtime / deployment (root)
 

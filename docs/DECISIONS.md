@@ -315,3 +315,11 @@ Implementation: `src/operations/search_locale.py` (`searxng_locale_from_messages
 **Reason:** Resetting a `ContextVar` token from the handler after the stream finishes fails with `ValueError: Token was created in a different Context`, aborts ASGI, and OWUI shows `TransferEncodingError` even when web search and the answer succeeded.
 
 **Rejected:** Passing the handler’s reset token into `_stream_with_logging`; skipping reset on streams (leaks context between requests on shared workers).
+
+## [2026-05-26] Plan 06 — web_search final answer: temporal grounding system prompt
+
+**Decision:** On the **final** vLLM call after page fetch (non-stream `_final_answer` and stream `_final_stream_body`), prepend one **`role: system`** message built by the proxy. Prompt text is **English** (project standard). Include **today’s date** from `datetime` at request time, with timezone from `user_location.approximate.timezone` (IANA) when valid, else **UTC**. Instruct the model to treat the following `tool` message as live web evidence and **not** to reject sources as “from the future” or fake solely because publication dates are after its training-time assumptions about the current year.
+
+**Reason:** OWUI verification showed successful search/fetch but answers denying breaking news (e.g. comparing source dates in 2026 to an internal “May 2025” today). User language varies; prompts in code stay English. OWUI per-model system prompts are not a reliable substitute for API clients.
+
+**Rejected:** Russian (or locale-matched) proxy prompts; relying only on OWUI Admin system prompt; injecting date only in OWUI filter; post-filtering assistant text for phrases like “fake”; changing router/URL-filter prompts for this problem.

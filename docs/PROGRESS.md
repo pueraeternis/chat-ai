@@ -1,12 +1,18 @@
 # Progress
 
-**Active plan:** *(none — plan 05 complete)*
+**Active plan:** [06-web-search-temporal-grounding.md](plans/06-web-search-temporal-grounding.md) *(documentation done; implementation pending)*
 
-**Summary:** Plan 05 complete; OWUI streaming fix for `request_id` context cleanup.
+**Summary:** Plan 06 — English system prompt with real date on web_search final LLM only (fix “future news” rejections).
 
 ---
 
 ## Journal
+
+### [2026-05-26] Plan 06 — documentation (web_search temporal grounding)
+
+- Problem: final LLM dismisses fetched sources when dates exceed training-time “today” (e.g. claims May 2025 while sources show 2026).
+- Decision: proxy prepends English system prompt with `datetime` + `user_location` timezone on final answer only.
+- Added `docs/plans/06-web-search-temporal-grounding.md`; DECISIONS, INDEX, ARCHITECTURE cross-ref.
 
 ### [2026-05-26] Fix — SSE `request_id` context on stream close
 
