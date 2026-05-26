@@ -1,12 +1,24 @@
 # Progress
 
-**Active plan:** [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md)
+**Active plan:** None (plan 04 completed).
 
-**Summary:** Plan 03 done (SSE streaming). Plan 04 documented (OWUI Filter). SearXNG `en`/`ru` from user message script (`search_locale.py`). Filter implementation still pending.
+**Summary:** Plan 04 done — OWUI Filter, operator setup verified. Model **Citations** + **Status Updates** required on OWUI v0.6.32 for status/citation UI. Follow-up: structured chat-proxy logging; smoke regression checklist item.
 
 ---
 
 ## Journal
+
+### [2026-05-26] Plan 04 — operator verification & docs (OWUI capabilities)
+
+- Verified: filter inject without Web Search globe; real URLs in answers; UI status/citations after enabling model **Citations** + **Status Updates**.
+- Updated `open_webui/README.md`, plan 04, ARCHITECTURE, DECISIONS (OWUI v0.6.32 display gate).
+
+### [2026-05-26] Plan 04 — implementation (OWUI web search Filter)
+
+- `open_webui/inject_web_search.py`: inject/skip helpers and `build_web_search_tool`.
+- `open_webui/functions/proxy_web_search_filter.py`: toggleable Filter `inlet` (self-contained for OWUI import).
+- `open_webui/README.md`: admin setup and verify steps.
+- `tests/test_owui_inject_web_search.py`; `pyproject.toml` pytest `pythonpath` includes `open_webui`.
 
 ### [2026-05-26] Web search SearXNG locale (en / ru from query script)
 

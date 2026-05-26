@@ -30,6 +30,7 @@ packages = ["src/core", "src/operations", "src/adapters", "src/web_search"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+pythonpath = ["src", "open_webui"]
 
 [dependency-groups]
 dev = [

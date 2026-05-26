@@ -287,3 +287,11 @@ Implementation: `src/operations/search_locale.py` (`searxng_locale_from_messages
 **Reason:** Operators and users expect search results in the language of the question; SearXNG documents language/region tags `en`, `ru`, `en-US`, `ru-RU`, etc. ([SearXNG locales](https://docs.searxng.org/src/searx.locales.html)).
 
 **Rejected:** Mapping only `user_location.approximate.country` → `ru-RU` / `en-US`; using city name as SearXNG `language`.
+
+## [2026-05-26] OWUI model capabilities for proxy search UX (v0.6.32)
+
+**Decision:** When Open WebUI uses chat-proxy as `OPENAI_API_BASE_URL` with the **Proxy Web Search** filter, enable per-model **Capabilities → Citations** and **Status Updates** (Admin → Settings → Models). Proxy SSE already sends `event.status` and `event.citation`; on OWUI **v0.6.32** the UI does not render them without these flags. Global Admin **Web Search** remains **disabled** to avoid duplicate SearXNG.
+
+**Reason:** Operator verification showed real fetched content without UI feedback until capabilities were enabled; filter inject does not require the Web Search globe when `require_web_search_feature` is false.
+
+**Rejected:** Assuming plan 03 SSE alone is sufficient for OWUI display without model capability flags on v0.6.32.

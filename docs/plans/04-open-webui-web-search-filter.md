@@ -1,6 +1,6 @@
 # Plan 04 — Open WebUI: inject proxy `web_search` (Filter)
 
-**Status:** Active (documentation approved 2026-05-26).  
+**Status:** Completed (operator verified 2026-05-26).  
 **Goal:** Let Open WebUI users trigger **chat-proxy** hosted `web_search` from the chat UI without changing OWUI source code and without enabling search for every API call.
 
 **Prerequisites:** Plan 02 (proxy `web_search` pipeline), Plan 03 (streaming + OWUI SSE status/citation for orchestrated search).  
@@ -102,12 +102,20 @@ Filter class: `toggle = True` so OWUI shows a per-chat toggle ([Filter docs](htt
 
 ### 4.3 OWUI admin setup
 
-1. **Disable** Admin → Settings → **Web Search** (global OWUI search off).
-2. **Functions** → import Filter from `open_webui/functions/proxy_web_search_filter.py`.
-3. **Models** → `qwen3-vl-30b-instruct` → add filter to **Filters** list.
+1. **Disable** Admin → Settings → **Web Search** (global OWUI middleware search off).
+2. **Functions** → import Filter from `open_webui/functions/proxy_web_search_filter.py`; keep **Active**.
+3. **Settings → Models** → `qwen3-vl-30b-instruct` (or served id):
+   - **Filters** → **Proxy Web Search**.
+   - **Capabilities** → **Citations** + **Status Updates** (required on OWUI v0.6.32 to render proxy SSE status/citation events).
 4. **Chat** → enable **Proxy Web Search** filter toggle for the session.
 
-Optional: enable model **Web Search** capability + valve `require_web_search_feature=true` to tie injection to OWUI’s Web Search icon instead of only the filter toggle.
+Optional: **Default Filters** for the model. **Web Search** capability (globe) + valve `require_web_search_feature=true` only if injection should follow the globe / `features.web_search` (default valve is `false` — globe not required).
+
+### 4.4 OWUI display vs proxy pipeline (v0.6.32)
+
+Proxy always emits wrapped SSE `event.status` / `event.citation` during orchestrated `web_search` when pages are fetched. On pinned **open-webui v0.6.32**, the chat UI shows them only if the model has **Status Updates** and **Citations** enabled (Admin → Settings → Models → Capabilities). Without those flags, search may still run and answers may reflect real URLs; operators only miss progress text and source chips.
+
+Verification without UI: `./tests/smoke/check_proxy_web_search.sh`; DevTools → completions stream → `tools` + `"event":{"type":"citation"`. Structured **chat-proxy** logging is not implemented yet (follow-up).
 
 ---
 
@@ -115,10 +123,10 @@ Optional: enable model **Web Search** capability + valve `require_web_search_fea
 
 ### 5.1 Repository
 
-- [ ] `open_webui/functions/proxy_web_search_filter.py` — OWUI Filter (self-contained `inlet`, no repo imports in sandbox)
-- [ ] `open_webui/inject_web_search.py` — shared inject logic for unit tests
-- [ ] `open_webui/README.md` — install and verify steps
-- [ ] `tests/test_owui_inject_web_search.py` — inject helper tests
+- [x] `open_webui/functions/proxy_web_search_filter.py` — OWUI Filter (self-contained `inlet`, no repo imports in sandbox)
+- [x] `open_webui/inject_web_search.py` — shared inject logic for unit tests
+- [x] `open_webui/README.md` — install and verify steps
+- [x] `tests/test_owui_inject_web_search.py` — inject helper tests
 
 ### 5.2 Documentation (this wave)
 
@@ -127,9 +135,9 @@ Optional: enable model **Web Search** capability + valve `require_web_search_fea
 
 ### 5.3 Operator verification
 
-- [ ] Filter imported and bound to model
-- [ ] Built-in OWUI Web Search off
-- [ ] Chat with filter on: news query → proxy status + streamed answer + sources
+- [x] Filter imported and bound to model
+- [x] Built-in OWUI Web Search off
+- [x] Chat with filter on: news query → proxy status + streamed answer + sources (requires model **Citations** + **Status Updates** on v0.6.32)
 - [ ] Direct API without `tools`: no search (regression)
 - [ ] `./tests/smoke/check_proxy_web_search.sh` still passes
 

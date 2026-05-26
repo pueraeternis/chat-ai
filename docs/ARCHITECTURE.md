@@ -121,6 +121,8 @@ Full contract: [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md), [plans/
 
 Filter appends `user_location` from Valves (OpenAI contract); proxy picks SearXNG `en`/`ru` from message text; orchestrated pipeline (plan 02) + SSE (plan 03).
 
+**OWUI v0.6.32:** Enable model **Citations** and **Status Updates** (Settings → Models → Capabilities) so proxy SSE status/citation lines render in chat; global Admin Web Search stays off. Details: [open_webui/README.md](../open_webui/README.md).
+
 Install: [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md).
 
 ### Not in plan 02 / 03
