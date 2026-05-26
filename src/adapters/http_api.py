@@ -41,7 +41,7 @@ def create_app() -> FastAPI:
         inference: VllmInferenceAdapter = request.app.state.inference
         return inference.list_models()
 
-    @app.post("/v1/chat/completions")
+    @app.post("/v1/chat/completions", response_model=None)
     async def chat_completions(request: Request) -> dict[str, Any] | JSONResponse:
         body = await request.json()
         if not isinstance(body, dict):
