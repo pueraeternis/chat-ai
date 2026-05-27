@@ -10,6 +10,7 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `docs/ARCHITECTURE.md` | Target design: chat-proxy, vLLM (Qwen3-VL), web-search MCP, Open WebUI |
 | `docs/DECISIONS.md` | Chronological architectural decision journal |
 | `docs/PROGRESS.md` | Active plan pointer + archived wave journal |
+| `docs/PRODUCTION.md` | Production deploy: 235B FP8, 4×H100, ports, ops, OWUI setup |
 | `docs/plans/01-vllm-migration.md` | Completed: Triton → native vLLM |
 | `docs/plans/02-chat-proxy-api.md` | Completed: OpenAI chat proxy, web_search, reasoning, web-search embed |
 | `docs/plans/03-streaming.md` | Completed: SSE streaming, OWUI status/citations for web_search |
@@ -35,6 +36,13 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `.python-version` | Python 3.12 for `uv` |
 | `pyproject.toml` | Dependencies (FastAPI, MCP, Playwright, …) |
 | `README.md` | Portfolio overview, quick start, screenshots |
+
+## Client examples (`examples/python/`)
+
+| Path | Purpose |
+|------|---------|
+| `examples/python/README.md` | Setup, env vars, script index |
+| `examples/python/01_list_models.py` … `07_reasoning.py` | Minimal OpenAI SDK clients for chat-proxy |
 
 ## Smoke tests (`tests/smoke/`)
 
