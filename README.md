@@ -1,4 +1,4 @@
-# Self-Hosted OpenAI Chat Stack — Reference Implementation
+# Self-Hosted OpenAI Chat Stack
 
 Public **reference implementation** for a self-hosted AI platform: a FastAPI **chat-proxy** as the public API boundary, with **vLLM** for inference, **hosted web search** (SearXNG + Playwright via MCP), and **Open WebUI** for the browser UI.
 
