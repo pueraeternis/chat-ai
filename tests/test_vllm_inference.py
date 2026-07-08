@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import httpx
 import pytest
 
@@ -13,7 +15,10 @@ from core.settings import ChatProxySettings
 def _adapter_with_transport(transport: httpx.BaseTransport) -> VllmInferenceAdapter:
     adapter = VllmInferenceAdapter(ChatProxySettings(vllm_base_url="http://test-vllm/v1"))
     adapter._client.close()
-    adapter._async_client = httpx.AsyncClient(base_url="http://test-vllm/v1", transport=transport)
+    adapter._async_client = httpx.AsyncClient(
+        base_url="http://test-vllm/v1",
+        transport=cast(httpx.AsyncBaseTransport, transport),
+    )
     adapter._client = httpx.Client(
         base_url="http://test-vllm/v1",
         transport=transport,

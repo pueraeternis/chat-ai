@@ -1,6 +1,6 @@
 # Plan 09 - API contract and request validation
 
-**Status:** Planned.
+**Status:** Completed.
 **Goal:** Make the implemented OpenAI Chat Completions-compatible surface predictable, well-validated, and easier to use from SDK clients without attempting full OpenAI API parity.
 
 **Scope:** API contract hardening for `POST /v1/chat/completions`: malformed JSON handling, lightweight request validation, consistent OpenAI-style errors, safer upstream vLLM error propagation, web-search synthetic response polish, focused regression tests, and minimal documentation updates.
@@ -176,76 +176,76 @@ Captured at plan time before implementation.
 
 ### 7.1 Route-level JSON parsing
 
-- [ ] Add a small helper in `src/adapters/http_api.py`, for example `_parse_json_object(request: Request) -> dict[str, Any] | JSONResponse`.
-- [ ] Catch malformed JSON exceptions from `request.json()` and return HTTP `400` with an OpenAI-style error payload.
-- [ ] Keep non-object JSON handling in the same helper so malformed JSON and wrong top-level shape are handled consistently.
-- [ ] Do not add request body size checks.
+- [x] Add a small helper in `src/adapters/http_api.py`, for example `_parse_json_object(request: Request) -> dict[str, Any] | JSONResponse`.
+- [x] Catch malformed JSON exceptions from `request.json()` and return HTTP `400` with an OpenAI-style error payload.
+- [x] Keep non-object JSON handling in the same helper so malformed JSON and wrong top-level shape are handled consistently.
+- [x] Do not add request body size checks.
 
 ### 7.2 Lightweight chat completion validation
 
-- [ ] Add a focused validation helper, either in `src/operations/chat_completion.py` or a small new module such as `src/core/chat_completion_contract.py`.
-- [ ] Validate route-critical fields before `_handle_chat_completion()` calculates `is_stream`.
-- [ ] Validate `model`, `messages`, message item shape, practical roles, supported content forms, `stream`, `tools`, and minimal function-tool shape.
-- [ ] Keep existing conflict checks for mixed function/system tools and `reasoning.enabled` with tools.
-- [ ] Avoid rejecting unknown request fields.
-- [ ] Use `ValidationError` with clear `param` values for client-fixable fields.
+- [x] Add a focused validation helper, either in `src/operations/chat_completion.py` or a small new module such as `src/core/chat_completion_contract.py`.
+- [x] Validate route-critical fields before `_handle_chat_completion()` calculates `is_stream`.
+- [x] Validate `model`, `messages`, message item shape, practical roles, supported content forms, `stream`, `tools`, and minimal function-tool shape.
+- [x] Keep existing conflict checks for mixed function/system tools and `reasoning.enabled` with tools.
+- [x] Avoid rejecting unknown request fields.
+- [x] Use `ValidationError` with clear `param` values for client-fixable fields.
 
 ### 7.3 OpenAI-style error consistency
 
-- [ ] Reuse `openai_error_payload()` and `validation_response()` for all validation failures.
-- [ ] If needed, extend `openai_error_payload()` to support explicit error `type` without breaking current callers.
-- [ ] Ensure malformed JSON, non-object JSON, invalid schema, unsupported tool mixes, and auth failures all return a top-level `error` object.
-- [ ] Keep validation failures at HTTP `400`.
-- [ ] Avoid exposing internal exception text in non-validation errors.
+- [x] Reuse `openai_error_payload()` and `validation_response()` for all validation failures.
+- [x] If needed, extend `openai_error_payload()` to support explicit error `type` without breaking current callers.
+- [x] Ensure malformed JSON, non-object JSON, invalid schema, unsupported tool mixes, and auth failures all return a top-level `error` object.
+- [x] Keep validation failures at HTTP `400`.
+- [x] Avoid exposing internal exception text in non-validation errors.
 
 ### 7.4 Upstream vLLM error propagation
 
-- [ ] Introduce a small upstream error representation, for example an `InferenceError` that can carry `status_code` and an optional safe OpenAI-style payload, or a new narrow error class if cleaner.
-- [ ] In `VllmInferenceAdapter`, inspect `httpx.HTTPStatusError.response` before raising.
-- [ ] If the response JSON has a top-level `error` object with safe scalar fields, preserve the payload and upstream status code.
-- [ ] If JSON parsing fails or the shape is not OpenAI-style, raise a generic inference error without backend internals.
-- [ ] Update `app_error_handler()` to honor the carried status/payload for safe upstream errors.
-- [ ] Keep logging detailed enough for operators through existing `log_upstream_error()` while keeping client-facing messages safe.
-- [ ] Apply the same policy to `list_models()`, non-stream `chat_completion()`, and stream startup failures where practical.
+- [x] Introduce a small upstream error representation, for example an `InferenceError` that can carry `status_code` and an optional safe OpenAI-style payload, or a new narrow error class if cleaner.
+- [x] In `VllmInferenceAdapter`, inspect `httpx.HTTPStatusError.response` before raising.
+- [x] If the response JSON has a top-level `error` object with safe scalar fields, preserve the payload and upstream status code.
+- [x] If JSON parsing fails or the shape is not OpenAI-style, raise a generic inference error without backend internals.
+- [x] Update `app_error_handler()` to honor the carried status/payload for safe upstream errors.
+- [x] Keep logging detailed enough for operators through existing `log_upstream_error()` while keeping client-facing messages safe.
+- [x] Apply the same policy to `list_models()`, non-stream `chat_completion()`, and stream startup failures where practical.
 
 ### 7.5 Web-search synthetic response polish
 
-- [ ] Update `WebSearchOrchestrator._build_response()` to create a unique id, for example `chatcmpl-` plus a URL-safe random token.
-- [ ] Add `created: int(time.time())`.
-- [ ] Keep `object: "chat.completion"`.
-- [ ] Preserve the existing `choices[0].index`, `choices[0].message`, and `choices[0].finish_reason` shape.
-- [ ] Decide and test `usage` consistency. Prefer `usage: None` if SDK parsing and examples remain clean.
-- [ ] Do not attempt token accounting.
-- [ ] Do not change streaming web-search SSE behavior except where tests expose a direct compatibility issue.
+- [x] Update `WebSearchOrchestrator._build_response()` to create a unique id, for example `chatcmpl-` plus a URL-safe random token.
+- [x] Add `created: int(time.time())`.
+- [x] Keep `object: "chat.completion"`.
+- [x] Preserve the existing `choices[0].index`, `choices[0].message`, and `choices[0].finish_reason` shape.
+- [x] Decide and test `usage` consistency. Prefer `usage: None` if SDK parsing and examples remain clean.
+- [x] Do not attempt token accounting.
+- [x] Do not change streaming web-search SSE behavior except where tests expose a direct compatibility issue.
 
 ### 7.6 Focused regression tests
 
-- [ ] Add HTTP contract tests, likely `tests/test_http_api_contract.py`, using `httpx.ASGITransport` and fake inference.
-- [ ] Cover malformed JSON with raw `content` and `Content-Type: application/json`.
-- [ ] Cover non-object JSON bodies such as arrays and strings.
-- [ ] Cover missing `messages`, non-list `messages`, and non-object message entries.
-- [ ] Cover invalid `model` values.
-- [ ] Cover invalid `stream` values and assert they do not enter the SSE branch.
-- [ ] Cover invalid `tools` and invalid function tool shape.
-- [ ] Add vLLM adapter tests with `httpx.MockTransport` or a small fake transport so live vLLM is not required.
-- [ ] Cover upstream OpenAI-shaped error propagation.
-- [ ] Cover upstream non-OpenAI error fallback.
-- [ ] Add web-search response builder tests for unique id, `created`, `object`, `choices`, and `usage` decision.
-- [ ] Keep existing service-level routing tests and extend only where route-level validation changes responsibilities.
+- [x] Add HTTP contract tests, likely `tests/test_http_api_contract.py`, using `httpx.ASGITransport` and fake inference.
+- [x] Cover malformed JSON with raw `content` and `Content-Type: application/json`.
+- [x] Cover non-object JSON bodies such as arrays and strings.
+- [x] Cover missing `messages`, non-list `messages`, and non-object message entries.
+- [x] Cover invalid `model` values.
+- [x] Cover invalid `stream` values and assert they do not enter the SSE branch.
+- [x] Cover invalid `tools` and invalid function tool shape.
+- [x] Add vLLM adapter tests with `httpx.MockTransport` or a small fake transport so live vLLM is not required.
+- [x] Cover upstream OpenAI-shaped error propagation.
+- [x] Cover upstream non-OpenAI error fallback.
+- [x] Add web-search response builder tests for unique id, `created`, `object`, `choices`, and `usage` decision.
+- [x] Keep existing service-level routing tests and extend only where route-level validation changes responsibilities.
 
 ### 7.7 Smoke and examples review
 
-- [ ] Review smoke scripts to confirm they still validate the intended successful contract and do not need live negative tests.
-- [ ] Add a smoke negative-contract check only if it stays fast and does not require vLLM, otherwise keep negative coverage in unit/ASGI tests.
-- [ ] Review OpenAI SDK examples for any behavior affected by `usage: None` or validation wording.
-- [ ] Update examples only if new compatibility wording or response fields should be documented.
+- [x] Review smoke scripts to confirm they still validate the intended successful contract and do not need live negative tests.
+- [x] Add a smoke negative-contract check only if it stays fast and does not require vLLM, otherwise keep negative coverage in unit/ASGI tests.
+- [x] Review OpenAI SDK examples for any behavior affected by `usage: None` or validation wording.
+- [x] Update examples only if new compatibility wording or response fields should be documented.
 
 ### 7.8 Documentation
 
-- [ ] Update `README.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCTION.md`, `examples/python/README.md`, or `tests/smoke/README.md` only if API behavior or compatibility wording changes.
-- [ ] Document that the project implements a practical Chat Completions-compatible subset, not full schema parity.
-- [ ] Mention that validation intentionally permits unknown fields for vLLM pass-through.
-- [ ] Do not add documentation for request body size limits.
+- [x] Update `README.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCTION.md`, `examples/python/README.md`, or `tests/smoke/README.md` only if API behavior or compatibility wording changes.
+- [x] Document that the project implements a practical Chat Completions-compatible subset, not full schema parity.
+- [x] Mention that validation intentionally permits unknown fields for vLLM pass-through.
+- [x] Do not add documentation for request body size limits.
 
 ---
 

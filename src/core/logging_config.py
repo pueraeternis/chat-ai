@@ -87,7 +87,13 @@ def configure_logging(settings: ChatProxySettings) -> None:
     else:
         handler.setFormatter(StructuredTextFormatter())
 
-    for name in ("chat_proxy", "chat_proxy.http", "chat_proxy.routing", "chat_proxy.web_search", "chat_proxy.upstream"):
+    for name in (
+        "chat_proxy",
+        "chat_proxy.http",
+        "chat_proxy.routing",
+        "chat_proxy.web_search",
+        "chat_proxy.upstream",
+    ):
         logger = logging.getLogger(name)
         logger.handlers.clear()
         logger.addHandler(handler)

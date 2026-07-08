@@ -15,7 +15,7 @@ _WEB_SEARCH_SYSTEM_TEMPLATE = (
     "or futuristic fiction.\n\n"
     "Your training data may be outdated. Do not claim that source publication dates "
     'are "from the future" or that news is fake solely because dates are later than '
-    'your internal assumptions about the current year. The date line above is '
+    "your internal assumptions about the current year. The date line above is "
     'authoritative for what "today" means.\n\n'
     "Answer the user's question using the provided sources. If the sources do not "
     "support a confident answer, say so clearly."
@@ -40,10 +40,7 @@ def resolve_timezone(user_location: dict[str, Any]) -> str:
 def build_web_search_system_prompt(*, now: datetime, timezone: str) -> str:
     """Build English system prompt with today's date in the given timezone."""
     tz = ZoneInfo(timezone)
-    if now.tzinfo is None:
-        local_now = now.replace(tzinfo=UTC).astimezone(tz)
-    else:
-        local_now = now.astimezone(tz)
+    local_now = now.replace(tzinfo=UTC).astimezone(tz) if now.tzinfo is None else now.astimezone(tz)
     date_iso = local_now.date().isoformat()
     return _WEB_SEARCH_SYSTEM_TEMPLATE.format(date_iso=date_iso, timezone=timezone)
 

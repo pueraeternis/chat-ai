@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
     from starlette.requests import Request
 
+
 def build_http_app() -> Starlette:
     """Starlette app with MCP on ``/mcp`` (default) and ``GET /health``."""
     mcp: FastMCP[WebSearchLifespanState] = create_web_search_mcp(http_mode=True)

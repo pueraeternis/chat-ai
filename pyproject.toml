@@ -38,6 +38,7 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "ruff>=0.8.0",
     "openai>=1.60.0",
+    "basedpyright>=1.39.9",
 ]
 
 [tool.uv]
@@ -62,6 +63,8 @@ quote-style = "double"
 
 [tool.basedpyright]
 pythonVersion = "3.12"
+typeCheckingMode = "standard"
 venvPath = "."
 venv = ".venv"
-extraPaths = ["src"]
+extraPaths = ["src", "open_webui", "examples/python"]
+reportImplicitRelativeImport = "none"

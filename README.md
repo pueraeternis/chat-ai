@@ -132,11 +132,23 @@ Import the filter from [`open_webui/functions/proxy_web_search_filter.py`](open_
 
 ## Local development (without Docker)
 
+Local quality gate (same checks as CI):
+
 ```bash
-uv sync
+uv sync --locked
+uv run ruff format --check .
+uv run ruff check .
+uv run basedpyright
 uv run pytest
-uv run chat-proxy   # needs vLLM + MCP URLs in env
 ```
+
+Run chat-proxy directly only when vLLM and MCP URLs are configured in the environment:
+
+```bash
+uv run chat-proxy
+```
+
+Optional smoke tests remain live-stack validation and require Docker services to be running.
 
 ## API modes (summary)
 

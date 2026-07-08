@@ -53,7 +53,10 @@ def _reject_reasoning_in_messages(messages: list[Any]) -> None:
 def _validate_request(body: dict[str, Any]) -> tuple[list[dict[str, Any]], list[Any]]:
     validate_chat_completion_request(body)
     tools = _tools_list(body)
-    messages = body.get("messages")
+    messages_value = body.get("messages")
+    if not isinstance(messages_value, list):
+        raise ValidationError("messages is required and must be an array", param="messages")
+    messages = messages_value
 
     _reject_reasoning_in_messages(messages)
 

@@ -174,7 +174,7 @@ sequenceDiagram
 
 **Future system tool:** add MCP server to Compose, register `type` in `system_tool_registry`, implement orchestrator (or single composite MCP tool if appropriate).
 
-Onion layout per `.cursor/rules/02-architecture-standards.mdc`.
+Use the repository onion-style layout.
 
 ---
 

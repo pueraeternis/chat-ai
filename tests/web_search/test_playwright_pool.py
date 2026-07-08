@@ -9,8 +9,8 @@ from web_search.core.errors import FetchError
 from web_search.core.limits_config import PlaywrightLimits
 
 
-def _limits(**kwargs: object) -> PlaywrightLimits:
-    base = {
+def _limits(**kwargs: int | float) -> PlaywrightLimits:
+    base: dict[str, int | float] = {
         "navigation_timeout_ms": 30_000,
         "max_redirects": 10,
         "max_concurrent_contexts": 1,

@@ -1,6 +1,6 @@
 # Documentation index
 
-Navigation map for the **chat-ai** repository. Read this first at session start (see `.cursor/rules/05-workflow.mdc`).
+Navigation map for the **chat-ai** repository.
 
 ## Documentation (`docs/`)
 
@@ -18,6 +18,9 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `docs/plans/05-chat-proxy-logging.md` | Completed: structured logging, web_search pipeline visibility |
 | `docs/plans/06-web-search-temporal-grounding.md` | Completed: English system prompt + current date on web_search final LLM |
 | `docs/plans/07-public-reference-documentation.md` | Completed: public reference documentation alignment |
+| `docs/plans/08-security-and-platform-boundaries.md` | Completed: optional API key auth, SSRF hardening, boundary docs |
+| `docs/plans/09-api-contract-and-request-validation.md` | Completed: request validation, OpenAI-style errors, API contract tests |
+| `docs/plans/10-final-repository-quality-cleanup.md` | Completed: final quality gates, CI, repository status cleanup |
 | `docs/images/README.md` | Screenshot index (snake_case PNGs for GitHub README) |
 | `docs/images/open_webui_web_search.png` | UI: proxy web search + citations |
 | `docs/images/open_webui_plain_chat.png` | UI: plain chat |
@@ -35,7 +38,7 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `.env.example` | Template for Compose, smoke, local proxy (copy to `.env`) |
 | `.env` | Local env (gitignored): HF cache, ports, secrets |
 | `.python-version` | Python 3.12 for `uv` |
-| `pyproject.toml` | Dependencies (FastAPI, MCP, Playwright, …) |
+| `pyproject.toml` | Dependencies and quality-tool configuration (Ruff, pytest, basedpyright) |
 | `README.md` | Reference implementation overview, local quick start, deployment profiles |
 
 ## Client examples (`examples/python/`)
@@ -89,17 +92,11 @@ Requires running stack (`docker compose up`).
 | `config/web_search/` | Limits, fetch policies, SearXNG settings |
 | `tests/` | Proxy + web_search unit tests |
 
-## Tooling and rules (`.cursor/rules/`)
+## Tooling
 
 | Path | Purpose |
 |------|---------|
-| `.cursor/rules/00-project-structure.mdc` | Repo layout, `docs/` conventions |
-| `.cursor/rules/01-code-standards.mdc` | Python style |
-| `.cursor/rules/02-architecture-standards.mdc` | Onion architecture, MCP routing |
-| `.cursor/rules/03-mcp-standards.mdc` | MCP tool contracts |
-| `.cursor/rules/04-testing-standards.mdc` | pytest, smoke |
-| `.cursor/rules/05-workflow.mdc` | Plans, PROGRESS, DECISIONS |
-| `.cursor/rules/06-git-workflow.mdc` | Git conventions |
+| `.github/workflows/quality.yml` | Public CI for Ruff, basedpyright, and pytest |
 
 ## Git / local (ignored)
 

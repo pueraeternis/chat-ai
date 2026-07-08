@@ -44,9 +44,7 @@ def _message_text(content: Any) -> str:
         return content
     if isinstance(content, list):
         parts = [
-            p.get("text", "")
-            for p in content
-            if isinstance(p, dict) and p.get("type") == "text"
+            p.get("text", "") for p in content if isinstance(p, dict) and p.get("type") == "text"
         ]
         return " ".join(parts)
     return ""

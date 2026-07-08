@@ -1,12 +1,33 @@
 # Progress
 
-**Active plan:** *(none — plan 07 complete)*
+**Active plan:** *(none — plan 10 complete)*
 
-**Summary:** Plan 07 shipped — public reference documentation alignment across README, ARCHITECTURE, PRODUCTION (reference deployment), examples, smoke, and Open WebUI docs.
+**Summary:** Plan 10 shipped — final repository quality cleanup with clean local gates, basedpyright metadata, lightweight CI, and completed status documentation for Plans 08-10.
 
 ---
 
 ## Journal
+
+### [2026-07-08] Plan 10 — final repository quality cleanup
+
+- Added `basedpyright` to dev dependencies and aligned type-check configuration with repository import roots.
+- Fixed remaining Ruff and basedpyright findings with narrow source/test changes; formatted the repository with Ruff.
+- Added `.github/workflows/quality.yml` for locked dependency sync, Ruff format/lint, basedpyright, and pytest.
+- Updated README with the local quality gate; kept live-stack smoke tests separate.
+- Marked Plans 08, 09, and 10 complete in status/index documentation.
+
+### [2026-07-08] Plan 09 — API contract and request validation
+
+- Added route-level JSON object parsing and OpenAI-style malformed/invalid request errors.
+- Added focused chat-completion contract validation while preserving unknown-field passthrough to vLLM.
+- Preserved safe upstream vLLM error payloads and added web-search response metadata (`id`, `created`, `usage`).
+- Added HTTP contract, vLLM error, and web-search response tests; smoke examples remain successful-path validation.
+
+### [2026-07-08] Plan 08 — security and platform boundaries
+
+- Added optional static `CHAT_PROXY_API_KEY` enforcement for `/v1/models` and `/v1/chat/completions`; `/health` remains unauthenticated.
+- Hardened Playwright-backed fetch against unsafe final URLs and subresource requests using the existing fetch policy.
+- Added auth and fetch-policy regression tests, and updated boundary/security documentation.
 
 ### [2026-07-08] Plan 07 — public reference documentation alignment
 

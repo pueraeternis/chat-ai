@@ -23,7 +23,10 @@ class _RecordingInference:
 
     def chat_completion(self, body: dict[str, Any]) -> dict[str, Any]:
         self.chat_calls.append(body)
-        return {"id": "chatcmpl-test", "choices": [{"message": {"role": "assistant", "content": "ok"}}]}
+        return {
+            "id": "chatcmpl-test",
+            "choices": [{"message": {"role": "assistant", "content": "ok"}}],
+        }
 
     async def chat_completion_stream(self, body: dict[str, Any]) -> AsyncIterator[bytes]:
         self.stream_calls.append(body)
@@ -163,7 +166,9 @@ async def test_invalid_request_shape_returns_validation_error(
 
 
 @pytest.mark.asyncio
-async def test_unknown_fields_pass_through_to_inference(app, inference: _RecordingInference) -> None:
+async def test_unknown_fields_pass_through_to_inference(
+    app, inference: _RecordingInference
+) -> None:
     payload = {
         "model": "test-model",
         "messages": [{"role": "user", "content": "hi"}],
@@ -179,7 +184,9 @@ async def test_unknown_fields_pass_through_to_inference(app, inference: _Recordi
 
 
 @pytest.mark.asyncio
-async def test_invalid_stream_value_does_not_enter_sse_branch(app, inference: _RecordingInference) -> None:
+async def test_invalid_stream_value_does_not_enter_sse_branch(
+    app, inference: _RecordingInference
+) -> None:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
@@ -206,7 +213,9 @@ async def test_missing_messages_with_stream_true_returns_json_400_before_sse(
 
 
 @pytest.mark.asyncio
-async def test_sdk_style_assistant_tool_call_messages_pass_through(app, inference: _RecordingInference) -> None:
+async def test_sdk_style_assistant_tool_call_messages_pass_through(
+    app, inference: _RecordingInference
+) -> None:
     payload = {
         "model": "test-model",
         "messages": [
@@ -217,14 +226,14 @@ async def test_sdk_style_assistant_tool_call_messages_pass_through(app, inferenc
                     {
                         "id": "call_123",
                         "type": "function",
-                        "function": {"name": "get_weather", "arguments": "{\"city\":\"Kyiv\"}"},
+                        "function": {"name": "get_weather", "arguments": '{"city":"Kyiv"}'},
                     }
                 ],
             },
             {
                 "role": "tool",
                 "tool_call_id": "call_123",
-                "content": "{\"temperature\":21}",
+                "content": '{"temperature":21}',
             },
         ],
     }
@@ -236,14 +245,20 @@ async def test_sdk_style_assistant_tool_call_messages_pass_through(app, inferenc
 
 
 @pytest.mark.asyncio
-async def test_developer_and_function_roles_pass_through(app, inference: _RecordingInference) -> None:
+async def test_developer_and_function_roles_pass_through(
+    app, inference: _RecordingInference
+) -> None:
     payload = {
         "model": "test-model",
         "messages": [
             {"role": "developer", "content": "Prefer concise answers."},
             {"role": "user", "content": "Call the legacy function."},
-            {"role": "assistant", "content": None, "function_call": {"name": "legacy_lookup", "arguments": "{}"}},
-            {"role": "function", "name": "legacy_lookup", "content": "{\"ok\":true}"},
+            {
+                "role": "assistant",
+                "content": None,
+                "function_call": {"name": "legacy_lookup", "arguments": "{}"},
+            },
+            {"role": "function", "name": "legacy_lookup", "content": '{"ok":true}'},
         ],
     }
     transport = ASGITransport(app=app)
@@ -251,6 +266,7 @@ async def test_developer_and_function_roles_pass_through(app, inference: _Record
         response = await client.post("/v1/chat/completions", json=payload)
     assert response.status_code == 200
     assert inference.chat_calls == [payload]
+
 
 @pytest.mark.asyncio
 async def test_stream_web_search_missing_user_location_returns_json_400_before_sse(
@@ -322,4 +338,3 @@ async def test_stream_multiple_system_tools_returns_json_400_before_sse(
     body = response.json()
     assert body["error"]["param"] == "tools"
     assert inference.stream_calls == []
-

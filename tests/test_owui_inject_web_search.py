@@ -18,7 +18,9 @@ from inject_web_search import (
         (
             {
                 "messages": [{"role": "user", "content": "hi"}],
-                "tools": [{"type": "web_search", "user_location": {"approximate": {"country": "US"}}}],
+                "tools": [
+                    {"type": "web_search", "user_location": {"approximate": {"country": "US"}}}
+                ],
             },
             False,
             True,

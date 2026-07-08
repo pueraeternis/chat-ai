@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,9 +22,9 @@ def orchestrator() -> WebSearchOrchestrator:
 
 
 def test_fetch_pages_continues_when_one_url_fails(orchestrator: WebSearchOrchestrator) -> None:
-    mcp = orchestrator._mcp
+    mcp = cast(MagicMock, orchestrator._mcp)
 
-    def fetch_side_effect(name: str, arguments: dict) -> dict:
+    def fetch_side_effect(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if arguments["url"] == "https://bad.example/":
             raise McpToolError("FETCH_INTERNAL_ERROR: navigation failed")
         return {"markdown": "# OK\n\ncontent"}

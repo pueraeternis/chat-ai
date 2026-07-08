@@ -50,8 +50,9 @@ def app():
 async def test_stream_completes_without_context_reset_error(app) -> None:
     """Consuming the full SSE body must not raise ValueError on contextvar reset."""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        async with client.stream(
+    async with (
+        AsyncClient(transport=transport, base_url="http://test") as client,
+        client.stream(
             "POST",
             "/v1/chat/completions",
             json={
@@ -59,7 +60,8 @@ async def test_stream_completes_without_context_reset_error(app) -> None:
                 "messages": [{"role": "user", "content": "hi"}],
                 "stream": True,
             },
-        ) as response:
-            assert response.status_code == 200
-            body = b"".join([chunk async for chunk in response.aiter_bytes()])
+        ) as response,
+    ):
+        assert response.status_code == 200
+        body = b"".join([chunk async for chunk in response.aiter_bytes()])
     assert b"data: [DONE]" in body

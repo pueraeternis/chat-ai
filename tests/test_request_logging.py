@@ -11,7 +11,6 @@ from core.logging_config import configure_logging
 from core.request_context import reset_request_id, set_request_id
 from core.settings import ChatProxySettings
 
-
 _CHAT_PROXY_LOGGERS = (
     "chat_proxy",
     "chat_proxy.http",

@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import yaml
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
 
 from web_search.core.errors import UrlFetchPolicyError
 from web_search.core.fetch_policies_config import load_fetch_policies_config
@@ -23,6 +21,8 @@ from web_search.operations.fetch_page_html import (
     load_html_document,
 )
 from web_search.operations.fetch_page_markdown import fetch_page_markdown
+
+RouteHandler = Callable[[Any, Any], Awaitable[None]]
 
 
 def _limits() -> LimitsConfig:
@@ -138,7 +138,9 @@ async def test_fetch_page_html_rejects_private_final_url(monkeypatch: pytest.Mon
 
 
 @pytest.mark.asyncio
-async def test_fetch_page_html_allows_public_redirect_final_url(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_fetch_page_html_allows_public_redirect_final_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     validate = AsyncMock(return_value=None)
     monkeypatch.setattr(
         "web_search.operations.fetch_page_html.validate_fetch_url_before_fetch_async",
@@ -179,9 +181,9 @@ async def test_install_fetch_url_policy_route_aborts_unsafe_subresource(
     )
 
     page = MagicMock()
-    handler = None
+    handler: RouteHandler | None = None
 
-    async def capture_route(_pattern, callback):
+    async def capture_route(_pattern: Any, callback: RouteHandler) -> None:
         nonlocal handler
         handler = callback
 
@@ -211,9 +213,9 @@ async def test_install_fetch_url_policy_route_continues_public_subresource(
     )
 
     page = MagicMock()
-    handler = None
+    handler: RouteHandler | None = None
 
-    async def capture_route(_pattern, callback):
+    async def capture_route(_pattern: Any, callback: RouteHandler) -> None:
         nonlocal handler
         handler = callback
 
@@ -234,7 +236,9 @@ async def test_install_fetch_url_policy_route_continues_public_subresource(
 
 
 @pytest.mark.asyncio
-async def test_load_html_document_installs_route_before_goto(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_load_html_document_installs_route_before_goto(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         "web_search.operations.fetch_page_html.validate_fetch_url_before_fetch_async",
         AsyncMock(return_value=None),
@@ -338,4 +342,3 @@ async def test_fetch_page_markdown_propagates_private_final_url_failure(
     )
     assert out.ok is False
     assert out.code == CODE_PRIVATE_NETWORK_FORBIDDEN
-

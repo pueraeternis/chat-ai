@@ -99,7 +99,9 @@ def _run(
         reset_request_id(token)
 
 
-def test_web_search_skip_logs(caplog: pytest.LogCaptureFixture, orchestrator, inference, mcp) -> None:
+def test_web_search_skip_logs(
+    caplog: pytest.LogCaptureFixture, orchestrator, inference, mcp
+) -> None:
     caplog.set_level(logging.INFO, logger="chat_proxy.web_search")
     _run(orchestrator, inference, mcp, router_action="SKIP", hits=[])
     messages = [r.message for r in caplog.records]
@@ -110,7 +112,9 @@ def test_web_search_skip_logs(caplog: pytest.LogCaptureFixture, orchestrator, in
     assert getattr(complete, "outcome", None) == "skip"
 
 
-def test_web_search_hits_logs(caplog: pytest.LogCaptureFixture, orchestrator, inference, mcp) -> None:
+def test_web_search_hits_logs(
+    caplog: pytest.LogCaptureFixture, orchestrator, inference, mcp
+) -> None:
     caplog.set_level(logging.INFO, logger="chat_proxy.web_search")
     _run(orchestrator, inference, mcp)
     messages = [r.message for r in caplog.records]
@@ -123,7 +127,9 @@ def test_web_search_hits_logs(caplog: pytest.LogCaptureFixture, orchestrator, in
     assert getattr(complete, "outcome", None) == "success"
 
 
-def test_web_search_no_hits_logs(caplog: pytest.LogCaptureFixture, orchestrator, inference, mcp) -> None:
+def test_web_search_no_hits_logs(
+    caplog: pytest.LogCaptureFixture, orchestrator, inference, mcp
+) -> None:
     caplog.set_level(logging.INFO, logger="chat_proxy.web_search")
     inference.chat_completion.side_effect = [
         {

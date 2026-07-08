@@ -94,8 +94,7 @@ class Filter:
         require_web_search_feature: bool = Field(
             default=False,
             description=(
-                "If true, inject only when body.features.web_search is set "
-                "(OWUI Web Search icon)"
+                "If true, inject only when body.features.web_search is set (OWUI Web Search icon)"
             ),
         )
 

@@ -63,7 +63,7 @@ def test_handle_allows_assistant_tool_calls_without_content(
                         }
                     ],
                 },
-                {"role": "tool", "tool_call_id": "call_1", "content": "{\"ok\":true}"},
+                {"role": "tool", "tool_call_id": "call_1", "content": '{"ok":true}'},
             ]
         }
     )
@@ -81,8 +81,12 @@ def test_handle_allows_developer_and_function_roles(
             "messages": [
                 {"role": "developer", "content": "be concise"},
                 {"role": "user", "content": "legacy"},
-                {"role": "assistant", "content": None, "function_call": {"name": "lookup", "arguments": "{}"}},
-                {"role": "function", "name": "lookup", "content": "{\"ok\":true}"},
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "function_call": {"name": "lookup", "arguments": "{}"},
+                },
+                {"role": "function", "name": "lookup", "content": '{"ok":true}'},
             ]
         }
     )

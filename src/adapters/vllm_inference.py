@@ -37,7 +37,9 @@ class VllmInferenceAdapter(InferencePort):
             resp.raise_for_status()
         except httpx.HTTPError as exc:
             log_upstream_error(stage="vllm", tool=None, exc=exc)
-            raise _build_inference_error(exc, fallback_message="Upstream inference request failed") from exc
+            raise _build_inference_error(
+                exc, fallback_message="Upstream inference request failed"
+            ) from exc
         return resp.json()
 
     def chat_completion(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -46,7 +48,9 @@ class VllmInferenceAdapter(InferencePort):
             resp.raise_for_status()
         except httpx.HTTPError as exc:
             log_upstream_error(stage="vllm", tool=None, exc=exc)
-            raise _build_inference_error(exc, fallback_message="Upstream inference request failed") from exc
+            raise _build_inference_error(
+                exc, fallback_message="Upstream inference request failed"
+            ) from exc
         return resp.json()
 
     async def chat_completion_stream(self, body: dict[str, Any]) -> AsyncIterator[bytes]:
@@ -61,7 +65,9 @@ class VllmInferenceAdapter(InferencePort):
                     yield chunk
         except httpx.HTTPError as exc:
             log_upstream_error(stage="vllm", tool=None, exc=exc)
-            raise _build_inference_error(exc, fallback_message="Upstream inference request failed") from exc
+            raise _build_inference_error(
+                exc, fallback_message="Upstream inference request failed"
+            ) from exc
 
 
 def _build_inference_error(exc: httpx.HTTPError, *, fallback_message: str) -> InferenceError:

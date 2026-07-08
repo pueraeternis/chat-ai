@@ -25,7 +25,9 @@ def main() -> None:
         messages=[
             {
                 "role": "user",
-                "content": ("Use web search: what is the current stable Python release version? Brief answer with sources."),
+                "content": (
+                    "Use web search: what is the current stable Python release version? Brief answer with sources."
+                ),
             },
         ],
         max_tokens=1024,
