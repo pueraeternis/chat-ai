@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import secrets
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, cast
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -98,12 +99,10 @@ def create_app() -> FastAPI:
     ) -> dict[str, Any] | JSONResponse | StreamingResponse:
         if auth_error := _authorize_request(request):
             return auth_error
-        body = await request.json()
-        if not isinstance(body, dict):
-            return JSONResponse(
-                status_code=400,
-                content=openai_error_payload("Request body must be a JSON object"),
-            )
+        parsed = await _parse_json_object(request)
+        if isinstance(parsed, JSONResponse):
+            return parsed
+        body = parsed
         return await _handle_chat_completion(request, body)
 
     @app.api_route("/v1/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
@@ -125,6 +124,23 @@ async def _validation_error_handler(_request: Request, exc: Exception) -> JSONRe
     return await app_error_handler(_request, exc)
 
 
+async def _parse_json_object(request: Request) -> dict[str, Any] | JSONResponse:
+    try:
+        raw_body = await request.body()
+        body = json.loads(raw_body)
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+        return JSONResponse(
+            status_code=400,
+            content=openai_error_payload("Malformed JSON request body"),
+        )
+    if not isinstance(body, dict):
+        return JSONResponse(
+            status_code=400,
+            content=openai_error_payload("Request body must be a JSON object"),
+        )
+    return body
+
+
 async def _handle_chat_completion(
     request: Request,
     body: dict[str, Any],
@@ -136,9 +152,10 @@ async def _handle_chat_completion(
     log_request_start(body)
 
     service: ChatCompletionService = request.app.state.chat_service
-    is_stream = bool(body.get("stream"))
+    is_stream = body.get("stream") is True
     try:
         if is_stream:
+            service.validate(body)
             # request_id is re-bound inside the stream generator (Starlette runs it
             # in a different task); reset the handler token before returning.
             reset_request_id(token)
@@ -205,7 +222,7 @@ async def _stream_with_disconnect(
     body: dict[str, Any],
     request: Request,
 ):
-    gen = service.stream(body)
+    gen = cast(Any, service.stream(body))
     try:
         async for chunk in gen:
             if await request.is_disconnected():

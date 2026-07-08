@@ -9,6 +9,7 @@ import httpx
 
 from core.errors import InferenceError
 from core.log_events import log_upstream_error
+from core.openai_errors import openai_error_payload
 from core.ports import InferencePort
 from core.settings import ChatProxySettings
 
@@ -36,7 +37,7 @@ class VllmInferenceAdapter(InferencePort):
             resp.raise_for_status()
         except httpx.HTTPError as exc:
             log_upstream_error(stage="vllm", tool=None, exc=exc)
-            raise InferenceError(f"vLLM models request failed: {exc}") from exc
+            raise _build_inference_error(exc, fallback_message="Upstream inference request failed") from exc
         return resp.json()
 
     def chat_completion(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -45,7 +46,7 @@ class VllmInferenceAdapter(InferencePort):
             resp.raise_for_status()
         except httpx.HTTPError as exc:
             log_upstream_error(stage="vllm", tool=None, exc=exc)
-            raise InferenceError(f"vLLM chat completion failed: {exc}") from exc
+            raise _build_inference_error(exc, fallback_message="Upstream inference request failed") from exc
         return resp.json()
 
     async def chat_completion_stream(self, body: dict[str, Any]) -> AsyncIterator[bytes]:
@@ -60,4 +61,56 @@ class VllmInferenceAdapter(InferencePort):
                     yield chunk
         except httpx.HTTPError as exc:
             log_upstream_error(stage="vllm", tool=None, exc=exc)
-            raise InferenceError(f"vLLM chat completion stream failed: {exc}") from exc
+            raise _build_inference_error(exc, fallback_message="Upstream inference request failed") from exc
+
+
+def _build_inference_error(exc: httpx.HTTPError, *, fallback_message: str) -> InferenceError:
+    payload: dict[str, Any] | None = None
+    status_code = 502
+    response = exc.response if isinstance(exc, httpx.HTTPStatusError) else None
+    if response is not None:
+        status_code = response.status_code
+        payload = _safe_openai_error_payload(response)
+    if payload is not None:
+        return InferenceError(
+            payload["error"]["message"],
+            code=str(payload["error"].get("code") or "inference_error"),
+            status_code=status_code,
+            payload=payload,
+        )
+    return InferenceError(fallback_message, status_code=502)
+
+
+def _safe_openai_error_payload(response: httpx.Response) -> dict[str, Any] | None:
+    try:
+        payload = response.json()
+    except ValueError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    error = payload.get("error")
+    if not isinstance(error, dict):
+        return None
+
+    message = error.get("message")
+    error_type = error.get("type")
+    if not isinstance(message, str) or not message.strip():
+        return None
+    if not isinstance(error_type, str) or not error_type.strip():
+        return None
+
+    safe_payload = openai_error_payload(
+        message,
+        error_type=error_type,
+        code=_safe_scalar_string(error.get("code"), default="inference_error") or "inference_error",
+        param=_safe_scalar_string(error.get("param")),
+    )
+    return safe_payload
+
+
+def _safe_scalar_string(value: Any, *, default: str | None = None) -> str | None:
+    if value is None:
+        return default
+    if isinstance(value, (str, int, float, bool)):
+        return str(value)
+    return default

@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from adapters.mcp_tool_client import McpToolClient
+from core.chat_completion_contract import validate_chat_completion_request
 from core.errors import ValidationError
 from core.log_events import log_route_mode, resolve_request_mode, tool_types_from_body
 from core.ports import InferencePort
@@ -19,9 +20,7 @@ def _tools_list(body: dict[str, Any]) -> list[dict[str, Any]]:
     tools = body.get("tools")
     if tools is None:
         return []
-    if not isinstance(tools, list):
-        raise ValidationError("tools must be an array", code="invalid_request_error")
-    return [t for t in tools if isinstance(t, dict)]
+    return tools
 
 
 def _function_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -52,10 +51,9 @@ def _reject_reasoning_in_messages(messages: list[Any]) -> None:
 
 
 def _validate_request(body: dict[str, Any]) -> tuple[list[dict[str, Any]], list[Any]]:
+    validate_chat_completion_request(body)
     tools = _tools_list(body)
     messages = body.get("messages")
-    if not isinstance(messages, list):
-        raise ValidationError("messages is required", param="messages")
 
     _reject_reasoning_in_messages(messages)
 
@@ -73,8 +71,34 @@ def _validate_request(body: dict[str, Any]) -> tuple[list[dict[str, Any]], list[
             "reasoning cannot be used with tools",
             code="conflicting_reasoning",
         )
+    _validate_system_tools(sys_tools)
 
     return tools, messages
+
+
+def _validate_system_tools(sys_tools: list[dict[str, Any]]) -> None:
+    if not sys_tools:
+        return
+    if len(sys_tools) > 1:
+        raise ValidationError(
+            "Only one system tool per request is supported",
+            code="invalid_request_error",
+            param="tools",
+        )
+    tool = sys_tools[0]
+    tool_type = str(tool.get("type", ""))
+    if tool_type not in SYSTEM_TOOL_TYPES:
+        raise ValidationError(
+            f"Unsupported system tool type: {tool_type}",
+            code="invalid_request_error",
+            param="tools[0].type",
+        )
+    if tool_type == "web_search" and not tool.get("user_location"):
+        raise ValidationError(
+            "user_location is required for web_search",
+            code="missing_required_parameter",
+            param="tools[0].user_location",
+        )
 
 
 class ChatCompletionService:
@@ -90,20 +114,25 @@ class ChatCompletionService:
         self._settings = settings
         self._registry = registry
 
+    def validate(self, body: dict[str, Any]) -> None:
+        _validate_request(body)
+
     def handle(self, body: dict[str, Any]) -> dict[str, Any]:
-        if body.get("stream"):
+        if body.get("stream") is True:
             raise ValidationError(
                 "stream must use SSE response; set stream false for JSON",
                 code="invalid_request_error",
+                param="stream",
             )
         tools, messages = _validate_request(body)
         return self._dispatch_json(body, tools, messages)
 
     async def stream(self, body: dict[str, Any]) -> AsyncIterator[bytes]:
-        if not body.get("stream"):
+        if body.get("stream") is not True:
             raise ValidationError(
                 "stream: true is required for streaming",
                 code="invalid_request_error",
+                param="stream",
             )
         tools, messages = _validate_request(body)
         async for chunk in self._dispatch_stream(body, tools, messages):
@@ -194,18 +223,9 @@ class ChatCompletionService:
         body: dict[str, Any],
         sys_tools: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        if len(sys_tools) > 1:
-            raise ValidationError(
-                "Only one system tool per request is supported",
-                code="invalid_request_error",
-            )
+        _validate_system_tools(sys_tools)
         tool = sys_tools[0]
         tool_type = str(tool.get("type", ""))
-        if tool_type not in SYSTEM_TOOL_TYPES:
-            raise ValidationError(
-                f"Unsupported system tool type: {tool_type}",
-                code="invalid_request_error",
-            )
         if tool_type == "web_search":
             return self._handle_web_search(body, tool)
         msg = f"Unsupported system tool: {tool_type}"
@@ -216,18 +236,9 @@ class ChatCompletionService:
         body: dict[str, Any],
         sys_tools: list[dict[str, Any]],
     ) -> AsyncIterator[bytes]:
-        if len(sys_tools) > 1:
-            raise ValidationError(
-                "Only one system tool per request is supported",
-                code="invalid_request_error",
-            )
+        _validate_system_tools(sys_tools)
         tool = sys_tools[0]
         tool_type = str(tool.get("type", ""))
-        if tool_type not in SYSTEM_TOOL_TYPES:
-            raise ValidationError(
-                f"Unsupported system tool type: {tool_type}",
-                code="invalid_request_error",
-            )
         if tool_type == "web_search":
             async for chunk in self._stream_web_search(body, tool):
                 yield chunk
@@ -247,9 +258,7 @@ class ChatCompletionService:
                 code="missing_required_parameter",
                 param="tools[0].user_location",
             )
-        messages = body.get("messages")
-        if not isinstance(messages, list):
-            raise ValidationError("messages is required", param="messages")
+        messages = body["messages"]
 
         orchestrator = self._web_search_orchestrator()
         return orchestrator.run(
@@ -271,9 +280,7 @@ class ChatCompletionService:
                 code="missing_required_parameter",
                 param="tools[0].user_location",
             )
-        messages = body.get("messages")
-        if not isinstance(messages, list):
-            raise ValidationError("messages is required", param="messages")
+        messages = body["messages"]
 
         orchestrator = self._web_search_orchestrator()
         async for chunk in orchestrator.run_stream(

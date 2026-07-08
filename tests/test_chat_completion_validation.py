@@ -28,6 +28,82 @@ def test_handle_rejects_stream_flag(service: ChatCompletionService) -> None:
         service.handle({"messages": [], "stream": True})
 
 
+def test_handle_rejects_non_boolean_stream(service: ChatCompletionService) -> None:
+    with pytest.raises(ValidationError, match="boolean"):
+        service.handle({"messages": [], "stream": "false"})
+
+
+def test_handle_rejects_invalid_model(service: ChatCompletionService) -> None:
+    with pytest.raises(ValidationError, match="model must be a non-empty string"):
+        service.handle({"model": "", "messages": []})
+
+
+def test_handle_rejects_unknown_message_role(service: ChatCompletionService) -> None:
+    with pytest.raises(ValidationError, match="message role must be one of"):
+        service.handle({"messages": [{"role": "bogus", "content": "hi"}]})
+
+
+def test_handle_allows_assistant_tool_calls_without_content(
+    service: ChatCompletionService,
+    inference: MagicMock,
+) -> None:
+    expected: dict[str, Any] = {"choices": [{"message": {"content": "ok"}}]}
+    inference.chat_completion.return_value = expected
+    out = service.handle(
+        {
+            "messages": [
+                {"role": "user", "content": "hi"},
+                {
+                    "role": "assistant",
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {"name": "lookup", "arguments": "{}"},
+                        }
+                    ],
+                },
+                {"role": "tool", "tool_call_id": "call_1", "content": "{\"ok\":true}"},
+            ]
+        }
+    )
+    assert out == expected
+
+
+def test_handle_allows_developer_and_function_roles(
+    service: ChatCompletionService,
+    inference: MagicMock,
+) -> None:
+    expected: dict[str, Any] = {"choices": [{"message": {"content": "ok"}}]}
+    inference.chat_completion.return_value = expected
+    out = service.handle(
+        {
+            "messages": [
+                {"role": "developer", "content": "be concise"},
+                {"role": "user", "content": "legacy"},
+                {"role": "assistant", "content": None, "function_call": {"name": "lookup", "arguments": "{}"}},
+                {"role": "function", "name": "lookup", "content": "{\"ok\":true}"},
+            ]
+        }
+    )
+    assert out == expected
+
+
+def test_handle_rejects_non_object_tool(service: ChatCompletionService) -> None:
+    with pytest.raises(ValidationError, match="each tool must be an object"):
+        service.handle({"messages": [], "tools": ["web_search"]})
+
+
+def test_handle_rejects_invalid_function_tool_shape(service: ChatCompletionService) -> None:
+    with pytest.raises(ValidationError, match=r"function\.name must be a non-empty string"):
+        service.handle(
+            {
+                "messages": [{"role": "user", "content": "hi"}],
+                "tools": [{"type": "function", "function": {"name": ""}}],
+            }
+        )
+
+
 def test_conflicting_tools(service: ChatCompletionService) -> None:
     body = {
         "messages": [{"role": "user", "content": "hi"}],

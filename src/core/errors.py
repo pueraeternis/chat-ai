@@ -29,8 +29,17 @@ class ValidationError(AppError):
 class InferenceError(AppError):
     """vLLM or upstream inference failure."""
 
-    def __init__(self, message: str, *, code: str = "inference_error") -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "inference_error",
+        status_code: int = 502,
+        payload: dict | None = None,
+    ) -> None:
         super().__init__(message, code=code)
+        self.status_code = status_code
+        self.payload = payload
 
 
 class McpToolError(AppError):

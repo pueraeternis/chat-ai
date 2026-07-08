@@ -9,16 +9,17 @@ from fastapi.responses import JSONResponse
 if TYPE_CHECKING:
     from fastapi import Request
 
-from core.errors import AppError, ValidationError
+from core.errors import AppError, InferenceError, ValidationError
 
 
 def openai_error_payload(
     message: str,
     *,
+    error_type: str = "invalid_request_error",
     code: str = "invalid_request_error",
     param: str | None = None,
 ) -> dict[str, Any]:
-    err: dict[str, Any] = {"message": message, "type": "invalid_request_error", "code": code}
+    err: dict[str, Any] = {"message": message, "type": error_type, "code": code}
     if param is not None:
         err["param"] = param
     return {"error": err}
@@ -45,11 +46,15 @@ def validation_response(exc: ValidationError) -> JSONResponse:
 async def app_error_handler(_request: Request, exc: Exception) -> JSONResponse:
     if not isinstance(exc, AppError):
         raise exc
-    status = 400 if isinstance(exc, ValidationError) else 502
-    code = exc.code if isinstance(exc, ValidationError) else "server_error"
     if isinstance(exc, ValidationError):
         return validation_response(exc)
+    if isinstance(exc, InferenceError) and exc.payload is not None:
+        return JSONResponse(status_code=exc.status_code, content=exc.payload)
     return JSONResponse(
-        status_code=status,
-        content={"error": {"message": exc.message, "type": "server_error", "code": code}},
+        status_code=502,
+        content=openai_error_payload(
+            exc.message,
+            error_type="server_error",
+            code="server_error",
+        ),
     )

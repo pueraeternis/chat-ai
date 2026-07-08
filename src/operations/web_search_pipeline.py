@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import secrets
 import time
 from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -25,8 +26,8 @@ from core.web_search_logging import (
 )
 from operations.search_locale import searxng_locale_from_messages
 from operations.sse_events import owui_citation_event, owui_status_event, url_citation_annotations
-from operations.web_search_prompt import prepend_web_search_system
 from operations.stream_passthrough import passthrough_vllm_stream
+from operations.web_search_prompt import prepend_web_search_system
 
 
 @dataclass(frozen=True)
@@ -443,9 +444,11 @@ class WebSearchOrchestrator:
         if annotations:
             message["annotations"] = annotations
         return {
-            "id": "chatcmpl-websearch",
+            "id": f"chatcmpl-{secrets.token_urlsafe(12)}",
+            "created": int(time.time()),
             "object": "chat.completion",
             "model": model,
+            "usage": None,
             "choices": [
                 {
                     "index": 0,
