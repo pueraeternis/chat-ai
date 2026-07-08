@@ -42,7 +42,12 @@ async def fetch_page_markdown(
         )
 
     try:
-        html_payload = await load_html_document(pool=pool, limits=limits, url=url)
+        html_payload = await load_html_document(
+            pool=pool,
+            limits=limits,
+            policies=policies,
+            url=url,
+        )
     except Exception as exc:  # pragma: no cover
         return FetchPageMarkdownResult(
             ok=False,

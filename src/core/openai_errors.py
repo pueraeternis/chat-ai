@@ -24,6 +24,17 @@ def openai_error_payload(
     return {"error": err}
 
 
+def unauthorized_response() -> JSONResponse:
+    return JSONResponse(
+        status_code=401,
+        content=openai_error_payload(
+            "Incorrect API key provided",
+            code="invalid_api_key",
+        ),
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 def validation_response(exc: ValidationError) -> JSONResponse:
     return JSONResponse(
         status_code=400,

@@ -84,7 +84,9 @@ VLLM_SERVED_MODEL=your-model-id
 
 # Secrets
 SEARXNG_SECRET=<secret>
-OPENAI_API_KEY=dummy   # SDK placeholder; chat-proxy does not enforce auth yet
+# Optional proxy auth (unset = disabled). When set, clients and Open WebUI need the same Bearer token.
+# CHAT_PROXY_API_KEY=<secret>
+OPENAI_API_KEY=dummy   # SDK/smoke token; must match CHAT_PROXY_API_KEY when proxy auth is enabled
 
 # Optional
 RAG_EMBEDDING_MODEL=BAAI/bge-m3
@@ -134,12 +136,24 @@ watch -n 30 "du -sh ${HF_HUB_CACHE}/hub 2>/dev/null"
 
 ### Health checks
 
-Verify the **public** API (chat-proxy):
+`GET /health` is always unauthenticated (used by Compose health checks).
 
 ```bash
-curl -s http://localhost:${CHAT_PROXY_PORT}/v1/models
 curl -s http://localhost:${CHAT_PROXY_PORT}/health
 ```
+
+`GET /v1/models` requires `Authorization: Bearer <CHAT_PROXY_API_KEY>` when proxy auth is enabled. When `CHAT_PROXY_API_KEY` is unset or empty, no auth header is required:
+
+```bash
+# Unauthenticated local default:
+curl -s http://localhost:${CHAT_PROXY_PORT}/v1/models
+
+# When CHAT_PROXY_API_KEY is set:
+curl -s -H "Authorization: Bearer ${CHAT_PROXY_API_KEY}" \
+  http://localhost:${CHAT_PROXY_PORT}/v1/models
+```
+
+Docker Compose passes `CHAT_PROXY_API_KEY` to chat-proxy and wires Open WebUI `OPENAI_API_KEY` from it when set.
 
 Optional debug — direct vLLM (internal):
 
@@ -175,7 +189,7 @@ Plain chat works after vLLM is healthy. Web search in the UI works after the Fil
 |---|--------|
 | Base URL | `http://<your-host>:${CHAT_PROXY_PORT}/v1` |
 | Model | Value of `VLLM_SERVED_MODEL` |
-| Auth | chat-proxy does **not** enforce API keys. `Authorization: Bearer` in SDK examples is a compatibility placeholder. Place chat-proxy behind a gateway or reverse proxy for authenticated reference deployments |
+| Auth | Optional static API key via `CHAT_PROXY_API_KEY`. When unset, auth is disabled (local default). When set, send `Authorization: Bearer <key>` on `/v1/models` and `/v1/chat/completions`. Set `OPENAI_API_KEY` to the same value for SDK clients and Open WebUI (Compose wires this automatically). `GET /health` stays unauthenticated. For internet exposure, set the key or use a gateway/reverse proxy |
 
 Use the OpenAI SDK with `base_url` pointing at chat-proxy — not at vLLM directly.
 

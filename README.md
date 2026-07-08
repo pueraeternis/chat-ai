@@ -113,7 +113,7 @@ Open WebUI: `http://localhost:${OPEN_WEBUI_PORT:-13000}` (port from `.env`).
 
 Chat-proxy API (use this for SDK clients and Open WebUI): `http://localhost:${CHAT_PROXY_PORT:-18080}/v1`.
 
-chat-proxy does **not** enforce API key authentication today. `Authorization: Bearer` headers in examples are OpenAI-client-compatible placeholders. For reference deployments exposed beyond localhost, place chat-proxy behind a gateway or reverse proxy until native auth is implemented.
+chat-proxy supports optional static API key authentication via `CHAT_PROXY_API_KEY`. When unset or empty (the default), `/v1/models` and `/v1/chat/completions` accept requests without credentials. When set, clients must send `Authorization: Bearer <key>`. `GET /health` stays unauthenticated for health checks. Set `OPENAI_API_KEY` to the same value for SDK clients; Docker Compose wires Open WebUI automatically. This is a simple self-hosted API key — not user accounts or SaaS IAM. For internet-exposed deployments, set `CHAT_PROXY_API_KEY` or place chat-proxy behind a gateway or reverse proxy.
 
 Direct vLLM access (`VLLM_PORT`, localhost only) is for smoke/debug — not the public application API.
 

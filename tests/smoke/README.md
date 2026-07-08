@@ -41,6 +41,15 @@ Run all proxy contract checks:
 ./tests/smoke/run_proxy_contract_smoke.sh
 ```
 
+When `CHAT_PROXY_API_KEY` is set on the running stack, smoke scripts use it automatically via `smoke_resolve_api_key()`. Docker Compose also wires Open WebUI `OPENAI_API_KEY` from `CHAT_PROXY_API_KEY`. For manual smoke runs outside Compose, you can align explicitly:
+
+```bash
+export OPENAI_API_KEY="${CHAT_PROXY_API_KEY}"
+./tests/smoke/run_proxy_contract_smoke.sh
+```
+
+Unauthenticated smoke still works when `CHAT_PROXY_API_KEY` is unset or empty.
+
 Reasoning (`reasoning.enabled`) is supported by the API but not covered by smoke: on models with hybrid thinking, chain-of-thought usually appears in `message.content` as returned by vLLM.
 
 ## Environment
@@ -51,7 +60,8 @@ Aligned with `.env.example`:
 |----------|---------|---------|
 | `CHAT_PROXY_PORT` | `18080` | Proxy URL |
 | `VLLM_SERVED_MODEL` | `qwen3-vl-30b-instruct` | Request `model` field |
-| `OPENAI_API_KEY` | `dummy` | `Authorization` header (SDK placeholder; not enforced by chat-proxy) |
+| `OPENAI_API_KEY` | `dummy` | `Authorization` header for SDK/smoke; must match `CHAT_PROXY_API_KEY` when proxy auth is enabled |
+| `CHAT_PROXY_API_KEY` | *(unset)* | Optional static API key; smoke scripts and Compose Open WebUI use it when set |
 | `SMOKE_CURL_MAX_TIME` | `300` | Most proxy POSTs |
 | `SMOKE_WEB_SEARCH_CURL_MAX_TIME` | `600` | Web search pipeline |
 | `SMOKE_VISION_IMAGE_FILE` | `tests/test_image.jpg` | Local image for vision smoke |

@@ -24,7 +24,10 @@ Environment (optional — defaults work against local chat-proxy):
 export CHAT_PROXY_HOST=localhost
 export CHAT_PROXY_PORT=18080
 export VLLM_SERVED_MODEL=qwen3-vl-30b-instruct   # match your deployment
-export OPENAI_API_KEY=dummy
+export OPENAI_API_KEY=dummy                        # unauthenticated local default
+# When chat-proxy auth is enabled, set both to the same value:
+# export CHAT_PROXY_API_KEY=your-secret
+# export OPENAI_API_KEY=your-secret
 ```
 
 Remote example:
@@ -57,14 +60,18 @@ python 02_plain_chat.py
 python 06_vision.py /path/to/image.jpg
 ```
 
-Raw JSON via curl (no SDK). `Authorization` is an OpenAI-client placeholder — chat-proxy does not validate it:
+Raw JSON via curl (no SDK). When `CHAT_PROXY_API_KEY` is unset, any Bearer token works for SDK compatibility. When auth is enabled, use the configured key:
 
 ```bash
+# Unauthenticated local default (CHAT_PROXY_API_KEY unset):
 curl -s "http://localhost:${CHAT_PROXY_PORT:-18080}/v1/chat/completions" \
   -H "Authorization: Bearer dummy" \
   -H "Content-Type: application/json" \
   -d "{\"model\":\"${VLLM_SERVED_MODEL:-qwen3-vl-30b-instruct}\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hi\"}],\"max_tokens\":32}" \
   | python3 -m json.tool
+
+# When CHAT_PROXY_API_KEY is set:
+# curl -s ... -H "Authorization: Bearer ${CHAT_PROXY_API_KEY}" ...
 ```
 
 ## Notes for API users
@@ -76,4 +83,4 @@ curl -s "http://localhost:${CHAT_PROXY_PORT:-18080}/v1/chat/completions" \
 - Web search can take several minutes; increase client timeout if needed.
 - Streaming is supported for plain chat, functions, reasoning, and web search (web search emits status/citation SSE events before answer tokens).
 - Supported API surface: `POST /v1/chat/completions`, `GET /v1/models` only — not the full OpenAI Platform.
-- chat-proxy does not enforce `Authorization` headers; `OPENAI_API_KEY` is for SDK compatibility. Use a gateway for authenticated reference deployments.
+- Optional auth: when `CHAT_PROXY_API_KEY` is set, send `Authorization: Bearer <key>` on `/v1/models` and `/v1/chat/completions`. `GET /health` stays unauthenticated. Set `OPENAI_API_KEY` to the same value for the OpenAI SDK. Unauthenticated local default works when `CHAT_PROXY_API_KEY` is empty.

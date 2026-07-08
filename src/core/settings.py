@@ -37,5 +37,9 @@ class ChatProxySettings(BaseSettings):
         description="Streamable HTTP MCP endpoint for web-search.",
     )
     mcp_timeout_seconds: float = Field(default=180.0, gt=0)
+    api_key: str = Field(
+        default="",
+        description="Optional static API key. When set, /v1/models and /v1/chat/completions require Authorization: Bearer.",
+    )
     log_level: str = Field(default="INFO", description="Log level (DEBUG, INFO, …).")
     log_json: bool = Field(default=False, description="Emit JSON log lines when true.")

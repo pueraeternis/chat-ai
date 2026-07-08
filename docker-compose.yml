@@ -101,6 +101,7 @@ services:
       CHAT_PROXY_VLLM_BASE_URL: http://vllm:8000/v1
       CHAT_PROXY_WEB_SEARCH_MCP_URL: ${CHAT_PROXY_WEB_SEARCH_MCP_URL:-http://web-search-mcp:3333/mcp}
       CHAT_PROXY_DEFAULT_MODEL: ${VLLM_SERVED_MODEL:-qwen3-vl-30b-instruct}
+      CHAT_PROXY_API_KEY: ${CHAT_PROXY_API_KEY:-}
       # CHAT_PROXY_LOG_LEVEL: INFO
       # CHAT_PROXY_LOG_JSON: "false"
     depends_on:
@@ -128,7 +129,8 @@ services:
     environment:
       AIOHTTP_CLIENT_TIMEOUT: "600"
       OPENAI_API_BASE_URL: "http://chat-proxy:8080/v1"
-      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      # When CHAT_PROXY_API_KEY is set, Open WebUI uses it; otherwise OPENAI_API_KEY (default dummy).
+      OPENAI_API_KEY: "${CHAT_PROXY_API_KEY:-${OPENAI_API_KEY:-dummy}}"
       ENABLE_OLLAMA_API: "false"
       HF_HUB_CACHE: /hf-hub
       HUGGINGFACE_HUB_CACHE: /hf-hub

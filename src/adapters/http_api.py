@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import secrets
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -21,12 +22,36 @@ from core.log_events import (
     resolve_request_mode,
 )
 from core.logging_config import configure_logging
-from core.openai_errors import app_error_handler, openai_error_payload
+from core.openai_errors import app_error_handler, openai_error_payload, unauthorized_response
 from core.request_context import new_request_id, reset_request_id, set_request_id
 from core.settings import ChatProxySettings
 from operations.chat_completion import ChatCompletionService, build_registry
 
 _STARTUP_LOGGER = logging.getLogger("chat_proxy")
+
+
+def _auth_enabled(settings: ChatProxySettings) -> bool:
+    return bool(settings.api_key.strip())
+
+
+def _authorize_request(request: Request) -> JSONResponse | None:
+    settings: ChatProxySettings = request.app.state.settings
+    if not _auth_enabled(settings):
+        return None
+
+    auth_header = request.headers.get("Authorization")
+    if auth_header is None:
+        return unauthorized_response()
+
+    parts = auth_header.split(" ", 1)
+    if len(parts) != 2 or parts[0] != "Bearer":
+        return unauthorized_response()
+
+    token = parts[1]
+    if not secrets.compare_digest(token, settings.api_key):
+        return unauthorized_response()
+
+    return None
 
 
 @asynccontextmanager
@@ -60,8 +85,10 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok", "service": "chat-proxy"}
 
-    @app.get("/v1/models")
-    async def list_models(request: Request) -> dict[str, Any]:
+    @app.get("/v1/models", response_model=None)
+    async def list_models(request: Request) -> dict[str, Any] | JSONResponse:
+        if auth_error := _authorize_request(request):
+            return auth_error
         inference: VllmInferenceAdapter = request.app.state.inference
         return inference.list_models()
 
@@ -69,6 +96,8 @@ def create_app() -> FastAPI:
     async def chat_completions(
         request: Request,
     ) -> dict[str, Any] | JSONResponse | StreamingResponse:
+        if auth_error := _authorize_request(request):
+            return auth_error
         body = await request.json()
         if not isinstance(body, dict):
             return JSONResponse(

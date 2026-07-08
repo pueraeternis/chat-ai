@@ -2,10 +2,14 @@
 # Smoke: GET /v1/models via chat-proxy (passthrough to vLLM).
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_common.sh
+source "${SCRIPT_DIR}/_common.sh"
+
 BASE_URL="${CHAT_PROXY_BASE_URL:-http://localhost:${CHAT_PROXY_PORT:-18080}/v1}"
 EXPECTED_ID="${VLLM_SERVED_MODEL:-qwen3-vl-30b-instruct}"
 
-response="$(curl -sfS "${BASE_URL}/models")"
+response="$(curl -sfS -H "Authorization: Bearer $(smoke_resolve_api_key)" "${BASE_URL}/models")"
 if ! python3 -c "
 import json, sys
 data = json.loads(sys.argv[1])

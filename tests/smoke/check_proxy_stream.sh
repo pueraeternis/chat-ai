@@ -33,7 +33,7 @@ echo "POST ${CHAT_PROXY_BASE_URL}/chat/completions (stream=true)"
 response="$(
   curl -sfS -N --max-time "${SMOKE_CURL_MAX_TIME}" \
     "${CHAT_PROXY_BASE_URL}/chat/completions" \
-    -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+    -H "Authorization: Bearer $(smoke_resolve_api_key)" \
     -H "Content-Type: application/json" \
     -d "${payload}"
 )" || smoke_fail "stream request failed (is chat-proxy up?)"

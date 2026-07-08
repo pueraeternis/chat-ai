@@ -6,6 +6,15 @@
 : "${OPENAI_API_KEY:=dummy}"
 : "${SMOKE_CURL_MAX_TIME:=300}"
 
+# When CHAT_PROXY_API_KEY is set, smoke checks use it as the Bearer token.
+smoke_resolve_api_key() {
+  if [[ -n "${CHAT_PROXY_API_KEY:-}" ]]; then
+    printf '%s' "${CHAT_PROXY_API_KEY}"
+  else
+    printf '%s' "${OPENAI_API_KEY}"
+  fi
+}
+
 smoke_fail() {
   echo "FAIL: $*" >&2
   exit 1
@@ -16,7 +25,7 @@ smoke_post_chat() {
   local max_time="${2:-$SMOKE_CURL_MAX_TIME}"
   curl -sfS --max-time "$max_time" \
     "${CHAT_PROXY_BASE_URL}/chat/completions" \
-    -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+    -H "Authorization: Bearer $(smoke_resolve_api_key)" \
     -H "Content-Type: application/json" \
     -d "$payload"
 }

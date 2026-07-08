@@ -29,7 +29,7 @@ Direct vLLM access from application clients is discouraged. Use chat-proxy for S
 
 **Local Compose port exposure:** vLLM, web-search MCP, and SearXNG host ports bind to `127.0.0.1` only (debug/smoke on the same machine). chat-proxy and Open WebUI bind on all interfaces. Reference deployments should remove internal host port mappings entirely or protect them behind a firewall.
 
-**Authentication:** chat-proxy does not validate `Authorization` headers today. Clients may send `Bearer` tokens for SDK compatibility; operators exposing the proxy beyond localhost should terminate auth at a gateway until native API key enforcement is added.
+**Authentication:** chat-proxy supports optional static API key auth via `CHAT_PROXY_API_KEY`. When unset or empty, `/v1/models` and `/v1/chat/completions` accept unauthenticated requests (local development default). When set, clients must send `Authorization: Bearer <key>`. `GET /health` remains open for health checks. Set `OPENAI_API_KEY` to the same value for SDK clients; Docker Compose wires Open WebUI from `CHAT_PROXY_API_KEY` when set. This is a single shared self-hosted key — not user identity, tenants, or enterprise IAM. Operators exposing the proxy beyond localhost should set `CHAT_PROXY_API_KEY` or terminate auth at a gateway.
 
 ## Compatibility boundary
 
@@ -263,6 +263,8 @@ Embedded in this repo (`src/web_search/`):
 
 **web-search-mcp** container: Playwright + Chromium + MCP HTTP. **chat-proxy** calls `tools/call` on that server; orchestration stays in proxy.
 
+**SSRF posture (Playwright fetch):** `fetch_page_html` / `fetch_page_markdown` validate the initial URL, install a Playwright request route that aborts unsafe subresource targets, and validate the final URL after redirects — all using `FetchPoliciesConfig` (internet-only HTTP/HTTPS, no private/loopback/link-local targets). This reduces browser-side SSRF risk without a full browser sandbox.
+
 ---
 
 ## Environment variables
@@ -277,11 +279,12 @@ Embedded in this repo (`src/web_search/`):
 | `VLLM_IMAGE_TAG` | vLLM image tag |
 | `OPEN_WEBUI_PORT` | UI port |
 | `CHAT_PROXY_PORT` | Public proxy port |
+| `CHAT_PROXY_API_KEY` | Optional static API key for `/v1/models` and `/v1/chat/completions` (unset = auth disabled) |
 | `CHAT_PROXY_WEB_SEARCH_MCP_URL` | In-container MCP URL for chat-proxy (default in Compose) |
 | `SEARXNG_PORT` | Host port → SearXNG (`127.0.0.1` bind; debug only) |
 | `WEB_SEARCH_MCP_PORT` | Host port → web-search MCP (`127.0.0.1` bind; debug only) |
 | `WEB_SEARCH_SEARXNG_BASE_URL` | SearXNG URL for web-search MCP container |
-| `OPENAI_API_KEY` | Placeholder for OpenAI SDK clients (not enforced by chat-proxy) |
+| `OPENAI_API_KEY` | OpenAI SDK / Open WebUI client token; must match `CHAT_PROXY_API_KEY` when proxy auth is enabled (Compose wires Open WebUI automatically) |
 | `RAG_EMBEDDING_MODEL` | e.g. `BAAI/bge-m3` |
 | `SEARXNG_SECRET` | SearXNG instance secret |
 
