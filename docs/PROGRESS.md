@@ -1,12 +1,21 @@
 # Progress
 
-**Active plan:** *(none — plan 06 complete)*
+**Active plan:** *(none — plan 07 complete)*
 
-**Summary:** Plan 06 shipped — English system prompt with real date on web_search final LLM only.
+**Summary:** Plan 07 shipped — public reference documentation alignment across README, ARCHITECTURE, PRODUCTION (reference deployment), examples, smoke, and Open WebUI docs.
 
 ---
 
 ## Journal
+
+### [2026-07-08] Plan 07 — public reference documentation alignment
+
+- Reframed README as reusable self-hosted AI platform reference implementation with local/reference deployment profiles.
+- Rewrote ARCHITECTURE: public/internal boundaries, compatibility boundary, generic deployment profiles; removed plan-era cutover wording.
+- Reframed PRODUCTION.md as reference deployment guide (capacity planning, configurable paths/ports/model).
+- Generalized examples/python/README.md for localhost + configurable chat-proxy settings.
+- Updated INDEX, smoke README (current API contract wording), open_webui/README.md consistency.
+- No code, Docker, or runtime changes.
 
 ### [2026-05-26] Plan 06 — implementation (web_search temporal grounding)
 

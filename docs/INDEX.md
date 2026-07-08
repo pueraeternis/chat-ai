@@ -7,16 +7,17 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | Path | Purpose |
 |------|---------|
 | `docs/INDEX.md` | This file — project file map and entry points |
-| `docs/ARCHITECTURE.md` | Target design: chat-proxy, vLLM (Qwen3-VL), web-search MCP, Open WebUI |
+| `docs/ARCHITECTURE.md` | Current architecture: chat-proxy public API, internal vLLM/MCP/SearXNG, compatibility boundary, deployment profiles |
 | `docs/DECISIONS.md` | Chronological architectural decision journal |
 | `docs/PROGRESS.md` | Active plan pointer + archived wave journal |
-| `docs/PRODUCTION.md` | Production deploy: 235B FP8, 4×H100, ports, ops, OWUI setup |
+| `docs/PRODUCTION.md` | Reference deployment: capacity planning, configurable ops, OWUI setup |
 | `docs/plans/01-vllm-migration.md` | Completed: Triton → native vLLM |
 | `docs/plans/02-chat-proxy-api.md` | Completed: OpenAI chat proxy, web_search, reasoning, web-search embed |
 | `docs/plans/03-streaming.md` | Completed: SSE streaming, OWUI status/citations for web_search |
 | `docs/plans/04-open-webui-web-search-filter.md` | Completed: OWUI Filter injects proxy `web_search` for UI |
 | `docs/plans/05-chat-proxy-logging.md` | Completed: structured logging, web_search pipeline visibility |
 | `docs/plans/06-web-search-temporal-grounding.md` | Completed: English system prompt + current date on web_search final LLM |
+| `docs/plans/07-public-reference-documentation.md` | Completed: public reference documentation alignment |
 | `docs/images/README.md` | Screenshot index (snake_case PNGs for GitHub README) |
 | `docs/images/open_webui_web_search.png` | UI: proxy web search + citations |
 | `docs/images/open_webui_plain_chat.png` | UI: plain chat |
@@ -35,7 +36,7 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `.env` | Local env (gitignored): HF cache, ports, secrets |
 | `.python-version` | Python 3.12 for `uv` |
 | `pyproject.toml` | Dependencies (FastAPI, MCP, Playwright, …) |
-| `README.md` | Portfolio overview, quick start, screenshots |
+| `README.md` | Reference implementation overview, local quick start, deployment profiles |
 
 ## Client examples (`examples/python/`)
 
@@ -54,8 +55,8 @@ Navigation map for the **chat-ai** repository. Read this first at session start 
 | `tests/smoke/check_proxy_function_calling.sh` | Client `function` tool_calls |
 | `tests/smoke/check_proxy_web_search.sh` | System `web_search` + annotations |
 | `tests/smoke/check_proxy_vision.sh` | Multimodal `image_url` (`tests/test_image.jpg`) |
-| `tests/smoke/check_vllm_models.sh` | `GET /v1/models` on vLLM (direct) |
-| `tests/smoke/check_vllm_tool_calls.sh` | vLLM function `tool_calls` (direct) |
+| `tests/smoke/check_vllm_models.sh` | `GET /v1/models` on vLLM (direct, optional debug) |
+| `tests/smoke/check_vllm_tool_calls.sh` | vLLM function `tool_calls` (direct, optional debug) |
 | `tests/smoke/check_proxy_models.sh` | Proxy `GET /v1/models` |
 
 Requires running stack (`docker compose up`).
@@ -64,16 +65,16 @@ Requires running stack (`docker compose up`).
 
 | Path | Purpose |
 |------|---------|
-| `open_webui/functions/proxy_web_search_filter.py` | *(plan 04)* Filter: inject `web_search` tool in `inlet` |
-| `open_webui/inject_web_search.py` | *(plan 04)* Inject helper for tests |
-| `open_webui/README.md` | *(plan 04)* Import filter in OWUI Admin |
+| `open_webui/functions/proxy_web_search_filter.py` | Filter: inject `web_search` tool in `inlet` |
+| `open_webui/inject_web_search.py` | Inject helper for tests |
+| `open_webui/README.md` | Import filter in OWUI Admin; proxy web search setup |
 
 ## Application code (`src/`)
 
 | Path | Purpose |
 |------|---------|
 | `src/adapters/http_api.py` | FastAPI: `/v1/models`, `/v1/chat/completions` |
-| `src/adapters/vllm_inference.py` | vLLM HTTP (`InferencePort`; plan 03: async stream) |
+| `src/adapters/vllm_inference.py` | vLLM HTTP (`InferencePort`; async stream) |
 | `src/adapters/mcp_tool_client.py` | MCP streamable HTTP `tools/call` |
 | `src/core/logging_config.py` | Log level, JSON/text formatters |
 | `src/core/request_context.py` | `request_id` contextvar for correlation |
@@ -110,10 +111,9 @@ Requires running stack (`docker compose up`).
 
 ## External references
 
-- Model: [Qwen/Qwen3-VL-30B-A3B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-30B-A3B-Instruct)
+- vLLM: [docs.vllm.ai](https://docs.vllm.ai/)
 - Qwen thinking: [Quickstart — enable_thinking](https://qwen.readthedocs.io/en/latest/getting_started/quickstart.html)
 - Qwen function calling: [Function Calling (vLLM)](https://qwen.readthedocs.io/en/latest/framework/function_call.html)
 - vLLM reasoning: [Reasoning outputs](https://docs.vllm.ai/en/latest/features/reasoning_outputs/)
-- vLLM Qwen3-VL: [Usage guide](https://docs.vllm.ai/projects/recipes/en/latest/Qwen/Qwen3-VL.html)
 - Open WebUI: [open-webui](https://github.com/open-webui/open-webui)
 - Open WebUI events: [Plugin events](https://docs.openwebui.com/features/extensibility/plugin/development/events/)

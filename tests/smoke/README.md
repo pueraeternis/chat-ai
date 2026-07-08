@@ -6,22 +6,26 @@ Scripts for a **running** stack (`docker compose up`). Load env from repo root:
 set -a && source .env && set +a
 ```
 
+Smoke tests validate the **public chat-proxy API contract**. Direct vLLM scripts are optional debug checks that bypass the proxy.
+
 ## Prerequisites
 
 | Check | Script |
 |-------|--------|
 | Proxy reachable, model listed | `check_proxy_models.sh` |
 
-Direct vLLM (optional, bypass proxy):
+### Direct vLLM (optional debug)
+
+These scripts hit vLLM directly — useful for isolating inference issues, not for validating the public API boundary.
 
 | Check | Script |
 |-------|--------|
 | vLLM `/v1/models` | `check_vllm_models.sh` |
 | vLLM function `tool_calls` | `check_vllm_tool_calls.sh` |
 
-## Chat-proxy contract (plan 02)
+## Chat-proxy API contract
 
-All use `CHAT_PROXY_BASE_URL` (default `http://localhost:${CHAT_PROXY_PORT}/v1`).
+All proxy contract scripts use `CHAT_PROXY_BASE_URL` (default `http://localhost:${CHAT_PROXY_PORT}/v1`).
 
 | # | Scenario | Script | Typical timeout |
 |---|----------|--------|-----------------|
@@ -37,15 +41,17 @@ Run all proxy contract checks:
 ./tests/smoke/run_proxy_contract_smoke.sh
 ```
 
-Reasoning (`reasoning.enabled`) is supported by the API but not covered by smoke: on Qwen3-VL, chain-of-thought usually appears in `message.content` as returned by vLLM.
+Reasoning (`reasoning.enabled`) is supported by the API but not covered by smoke: on models with hybrid thinking, chain-of-thought usually appears in `message.content` as returned by vLLM.
 
 ## Environment
+
+Aligned with `.env.example`:
 
 | Variable | Default | Used by |
 |----------|---------|---------|
 | `CHAT_PROXY_PORT` | `18080` | Proxy URL |
 | `VLLM_SERVED_MODEL` | `qwen3-vl-30b-instruct` | Request `model` field |
-| `OPENAI_API_KEY` | `dummy` | `Authorization` header |
+| `OPENAI_API_KEY` | `dummy` | `Authorization` header (SDK placeholder; not enforced by chat-proxy) |
 | `SMOKE_CURL_MAX_TIME` | `300` | Most proxy POSTs |
 | `SMOKE_WEB_SEARCH_CURL_MAX_TIME` | `600` | Web search pipeline |
 | `SMOKE_VISION_IMAGE_FILE` | `tests/test_image.jpg` | Local image for vision smoke |
@@ -54,8 +60,8 @@ Reasoning (`reasoning.enabled`) is supported by the API but not covered by smoke
 
 1. **Plain chat:** `object: chat.completion`, `finish_reason: stop`, `message.content` string, no `tool_calls`.
 2. **Plain stream:** `text/event-stream` with `chat.completion.chunk` lines and terminal `data: [DONE]`.
-2. **Functions:** `finish_reason: tool_calls`, `message.tool_calls[]` with `type: function`, `message.content` null/empty.
-3. **Web search:** `finish_reason: stop`, `message.content`, `message.annotations[]` with `type: url_citation`, no `tool_calls`.
-4. **Vision:** `finish_reason: stop`, descriptive `message.content` for multimodal input.
+3. **Functions:** `finish_reason: tool_calls`, `message.tool_calls[]` with `type: function`, `message.content` null/empty.
+4. **Web search:** `finish_reason: stop`, `message.content`, `message.annotations[]` with `type: url_citation`, no `tool_calls`.
+5. **Vision:** `finish_reason: stop`, descriptive `message.content` for multimodal input.
 
 On failure, scripts print the raw JSON body to stderr.

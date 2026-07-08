@@ -1,6 +1,6 @@
 # Open WebUI extensions (chat-ai)
 
-Functions for [Open WebUI](https://github.com/open-webui/open-webui) that integrate with **chat-proxy** (not the OWUI built-in Web Search stack).
+Functions for [Open WebUI](https://github.com/open-webui/open-webui) that integrate with **chat-proxy** — the public API boundary for this platform. Open WebUI is configured to call chat-proxy (not vLLM directly) and must not use the OWUI built-in Web Search stack when using the proxy `web_search` workflow.
 
 ## Proxy Web Search filter
 
@@ -24,16 +24,16 @@ When the user enables **Proxy Web Search** on a chat, the filter `inlet` appends
 }
 ```
 
-Open WebUI forwards `tools` to `OPENAI_API_BASE_URL` (chat-proxy). Proxy runs orchestrated search + SSE status/citations (plans 02–03). SearXNG language (`en` / `ru`) comes from the user message text, not from these valves.
+Open WebUI forwards `tools` to `OPENAI_API_BASE_URL` (chat-proxy). Proxy runs orchestrated search + SSE status/citations. SearXNG language (`en` / `ru`) comes from the user message text, not from these valves.
 
 Shared inject logic for tests: `inject_web_search.py` (keep in sync with the filter file).
 
 ### Admin setup
 
 1. **Disable** Admin → Settings → **Web Search** (avoid duplicate SearXNG with OWUI middleware). This is **not** the same as model capabilities below.
-2. Ensure **Open WebUI** points at chat-proxy (`OPENAI_API_BASE_URL=http://chat-proxy:8080/v1` in Compose).
+2. Ensure **Open WebUI** points at chat-proxy (`OPENAI_API_BASE_URL` set to chat-proxy `/v1` endpoint in Compose — e.g. `http://chat-proxy:8080/v1` inside Docker network).
 3. **Admin → Functions** → import or create `functions/proxy_web_search_filter.py`; keep the function **Active**.
-4. **Admin → Settings → Models** → your model (e.g. `qwen3-vl-30b-instruct`):
+4. **Admin → Settings → Models** → your deployed model id (value of `VLLM_SERVED_MODEL`):
    - **Filters** → enable **Proxy Web Search**.
    - **Capabilities** → enable **Citations** and **Status Updates** (required on OWUI v0.6.32 for proxy SSE UX; see below).
    - **Web Search** capability (globe) is **optional** when `require_web_search_feature` is `false` (default).
@@ -95,3 +95,9 @@ Search can still run without them (answer may cite real pages); only the UI feed
 The filter does **not** inject if `tools` already contains `web_search` or any `type: "function"` tool (proxy returns `400 conflicting_tools`).
 
 Optional: enable model **Web Search** capability and set valve `require_web_search_feature=true` to tie injection to OWUI’s Web Search icon instead of only the filter chip.
+
+### Limitations
+
+- Disable OWUI built-in Web Search when using this filter (duplicate SearXNG path).
+- Enable **Citations** and **Status Updates** on the model for full proxy web search UX.
+- Proxy supports one system tool per request; cannot mix `web_search` with client `function` tools.

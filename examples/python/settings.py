@@ -8,7 +8,7 @@ from typing import Any
 
 
 def base_url() -> str:
-    port = os.environ.get("CHAT_PROXY_PORT", "19000")
+    port = os.environ.get("CHAT_PROXY_PORT", "18080")
     host = os.environ.get("CHAT_PROXY_HOST", "localhost")
     return os.environ.get("CHAT_PROXY_BASE_URL", f"http://{host}:{port}/v1")
 
@@ -18,7 +18,7 @@ def api_key() -> str:
 
 
 def model_id() -> str:
-    return os.environ.get("VLLM_SERVED_MODEL", "qwen3-vl-235b-instruct")
+    return os.environ.get("VLLM_SERVED_MODEL", "qwen3-vl-30b-instruct")
 
 
 def print_json(label: str, obj: Any) -> None:

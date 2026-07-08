@@ -1,32 +1,69 @@
 # Architecture
 
-Local GPU stack: **OpenAI-compatible chat-proxy**, **Qwen3-VL** on **vLLM**, **web-search** (MCP), and **Open WebUI**.
+Current-state architecture for the **chat-ai** self-hosted AI platform reference implementation: **Open WebUI** + **chat-proxy** + **vLLM** + **web-search MCP** + **SearXNG**.
 
 ## System context
 
-| Layer | Role |
-|-------|------|
-| **Open WebUI** | Browser UI, sessions, RAG (local embeddings); OpenAI client → proxy |
-| **chat-proxy** | Public API: `/v1/chat/completions`, `/v1/models`; system tools, validation, orchestration |
-| **vLLM** | Internal inference: VL model, Hermes tool calls, Qwen3 reasoning parser |
-| **web-search (MCP HTTP)** | SearXNG + Playwright; MCP tools `search_urls`, `fetch_page_markdown` (logic in `web_search.operations`) |
-| **SearXNG** | External metasearch HTTP API |
-| **Host** | Single NVIDIA GPU (high VRAM, e.g. 80GB class), Hugging Face cache, Docker Compose |
+| Component | Role |
+|-----------|------|
+| **Open WebUI** | Public browser UI, chat sessions, RAG (local embeddings); OpenAI client → chat-proxy |
+| **chat-proxy** | Public API boundary: `/v1/chat/completions`, `/v1/models`; validation, routing, system-tool orchestration |
+| **vLLM** | Internal inference backend: OpenAI-compatible model API, Hermes tool calls, optional reasoning parser |
+| **web-search (MCP HTTP)** | Internal MCP service: SearXNG + Playwright; tools `search_urls`, `fetch_page_markdown` |
+| **SearXNG** | Internal metasearch HTTP API used by web-search MCP |
+| **MCP stdio** | Local development / external MCP client path — not the proxy hot path in Compose deployments |
 
-Users and SDK clients target the **proxy**. vLLM and MCP are not direct public dependencies after plan 02 cutover.
+SDK clients and Open WebUI target **chat-proxy**. vLLM, MCP services, and SearXNG are implementation details for normal application use.
 
-## Target deployment (plan 02)
+## Public interfaces and internal services
+
+| Exposure | Service | Interface |
+|----------|---------|-----------|
+| **Public** | Open WebUI | Browser UI; configured to call chat-proxy as OpenAI API |
+| **Public** | chat-proxy | `POST /v1/chat/completions`, `GET /v1/models` |
+| **Internal** | vLLM | OpenAI-compatible HTTP API on Docker network (`vllm:8000`); optional `127.0.0.1` host port for local debug |
+| **Internal** | web-search MCP | Streamable HTTP MCP at `http://web-search-mcp:3333/mcp` on Docker network; optional `127.0.0.1` host port for debug |
+| **Internal** | SearXNG | Metasearch HTTP API on Docker network; optional `127.0.0.1` host port for debug |
+
+Direct vLLM access from application clients is discouraged. Use chat-proxy for SDK and UI traffic.
+
+**Local Compose port exposure:** vLLM, web-search MCP, and SearXNG host ports bind to `127.0.0.1` only (debug/smoke on the same machine). chat-proxy and Open WebUI bind on all interfaces. Reference deployments should remove internal host port mappings entirely or protect them behind a firewall.
+
+**Authentication:** chat-proxy does not validate `Authorization` headers today. Clients may send `Bearer` tokens for SDK compatibility; operators exposing the proxy beyond localhost should terminate auth at a gateway until native API key enforcement is added.
+
+## Compatibility boundary
+
+The platform implements an **OpenAI Chat Completions-compatible** backend — not the full OpenAI Platform.
+
+### Supported public API surface
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /v1/chat/completions` | Chat, tools, reasoning, streaming |
+| `GET /v1/models` | List served model id(s) |
+
+### Known limitations (not supported)
+
+- `/v1/responses`
+- Assistants API
+- Images API
+- Files API
+- Multiple system tools per request
+- Mixing hosted/system `web_search` with client `function` tools in one request (`400 conflicting_tools`)
+- Combining `reasoning.enabled` with any `tools` (`400`)
+
+## Deployment topology
 
 ```mermaid
 flowchart TB
   User[User / SDK]
-  OW[Open WebUI :13000]
-  Proxy[chat-proxy :8080]
-  VLLM[vLLM :8000]
+  OW[Open WebUI]
+  Proxy[chat-proxy]
+  VLLM[vLLM]
   MCP[web-search MCP]
   SX[SearXNG]
   HF[(HF cache)]
-  GPU[GPU 0]
+  GPU[GPU / accelerator]
 
   User --> OW
   OW -->|/v1| Proxy
@@ -39,7 +76,7 @@ flowchart TB
   OW -->|RAG embeddings| HF
 ```
 
-**Deployed stack:** Open WebUI → chat-proxy → vLLM; web-search via MCP (SearXNG `en`/`ru` from query script); streaming (plan 03); UI `web_search` via plan 04 Filter; logging plan 05. See [plans/01-vllm-migration.md](plans/01-vllm-migration.md)–[05-chat-proxy-logging.md](plans/05-chat-proxy-logging.md).
+Port numbers, model id, cache paths, and GPU layout are **operator-selected** via `.env` and `docker-compose.yml`. See [PRODUCTION.md](PRODUCTION.md) for reference deployment guidance.
 
 **UI examples:** [images/README.md](images/README.md) · web search with citations:
 
@@ -47,9 +84,30 @@ flowchart TB
 
 ---
 
+## Deployment profiles
+
+### Local development
+
+Purpose: single-machine quick start, local development, smoke validation, portfolio/demo.
+
+- Source of truth for defaults: `.env.example` and `docker-compose.yml`
+- Configurable: `CHAT_PROXY_PORT`, `OPEN_WEBUI_PORT`, `VLLM_PORT`, `VLLM_HF_MODEL`, `VLLM_SERVED_MODEL`, HF cache paths
+- Direct vLLM host port (`127.0.0.1` only) is for smoke/debug; SDK clients and Open WebUI use chat-proxy
+- Default Compose profile targets a vision-language model suitable for local GPU capacity (see `docker-compose.yml`)
+
+### Reference deployment
+
+Purpose: reusable production-oriented patterns for operators running their own stack.
+
+- Deployment dimensions: model size, context length, GPU/accelerator capacity, tensor parallelism, storage/cache paths, service ports, network exposure
+- All infrastructure values are operator-selected — no canonical host, hardware layout, or model is assumed
+- Operational guidance: [PRODUCTION.md](PRODUCTION.md)
+
+---
+
 ## Chat proxy API
 
-Single public surface: **OpenAI Chat Completions** shape (not full OpenAI Platform).
+Single public surface: **OpenAI Chat Completions** shape.
 
 ### Request modes
 
@@ -83,28 +141,28 @@ Single public surface: **OpenAI Chat Completions** shape (not full OpenAI Platfo
 }
 ```
 
-`user_location` is **required**. v1: one system tool per request.
+`user_location` is **required**. One system tool per request.
 
 **Response:** `finish_reason: stop`, `message.content`, `message.annotations[]` with `url_citation` (not client-visible `tool_calls`).
 
-**Pipeline:** router LLM → MCP `search_urls` (10) → LLM URL filter → MCP `fetch_page_markdown` (parallel) → final LLM → citations in `annotations` (non-stream) and OWUI `citation` events + streamed answer (plan 03 stream).
+**Pipeline:** router LLM → MCP `search_urls` (10) → LLM URL filter → MCP `fetch_page_markdown` (parallel) → final LLM → citations in `annotations` (non-stream) and OWUI `citation` events + streamed answer.
 
-**Temporal grounding (plan 06):** Final LLM only (`_final_answer` / `_final_stream_body`) — `web_search_prompt.py` prepends an English `system` message with today’s date (`datetime`, IANA timezone from `user_location.approximate.timezone`, else UTC) so the model treats the following `tool` block as live web evidence. Router, URL filter, SKIP, and no-hits paths are unchanged. Details: [plans/06-web-search-temporal-grounding.md](plans/06-web-search-temporal-grounding.md).
+**Temporal grounding:** Final LLM only — `web_search_prompt.py` prepends an English `system` message with today's date (`datetime`, IANA timezone from `user_location.approximate.timezone`, else UTC) so the model treats the following `tool` block as live web evidence. Router, URL filter, SKIP, and no-hits paths are unchanged. Details: [plans/06-web-search-temporal-grounding.md](plans/06-web-search-temporal-grounding.md).
 
 **SearXNG language:** from last user message (`search_locale.py`): Cyrillic ≥ Latin → `ru`; else `en`. MCP `search_urls` passes this as SearXNG `language` ([locale tags](https://docs.searxng.org/src/searx.locales.html): `en`, `ru`, …). **`user_location`** is required for the API tool shape (country/city/timezone) but does not set SearXNG locale.
 
 ### Client function calling
 
-Standard OpenAI: proxy forwards `tools` to vLLM; returns `tool_calls` / `finish_reason: tool_calls`. Client executes functions and continues with `role: tool`.
+Standard OpenAI shape: proxy forwards `tools` to vLLM; returns `tool_calls` / `finish_reason: tool_calls`. Client executes functions and continues with `role: tool`.
 
 ### Reasoning (optional)
 
 - Request: `reasoning.enabled: true` → `chat_template_kwargs.enable_thinking: true` on vLLM.
-- Response: passthrough from vLLM. On Qwen3-VL-Instruct, chain-of-thought usually appears in `message.content`; `message.reasoning_content` is set only if vLLM exposes a separate `reasoning` field.
-- Not combined with tools in v1.
+- Response: passthrough from vLLM. On models with hybrid thinking (e.g. Qwen3-VL-Instruct), chain-of-thought usually appears in `message.content`; `message.reasoning_content` is set only if vLLM exposes a separate `reasoning` field.
+- Not combined with tools.
 - Clients must **not** send `reasoning_content` in history (400).
 
-### Streaming (plan 03)
+### Streaming
 
 | Mode | `stream: true` |
 |------|----------------|
@@ -115,21 +173,17 @@ Standard OpenAI: proxy forwards `tools` to vLLM; returns `tool_calls` / `finish_
 
 **Open WebUI:** Progress and source chips use SSE `data: {"event": {"type": "status"|"citation", ...}}` from chat-proxy when `web_search` tool is in the request.
 
-Full contract: [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md), [plans/03-streaming.md](plans/03-streaming.md).
-
-### Open WebUI → proxy `web_search` (plan 04)
+### Open WebUI → proxy `web_search`
 
 | Path | Who adds `tools: web_search` | Notes |
 |------|------------------------------|--------|
-| **API / SDK** | Client in request body | Opt-in; unchanged |
+| **API / SDK** | Client in request body | Opt-in |
 | **OWUI Filter** | `inlet` on active filter | Primary UI path; see `open_webui/functions/` |
 | **OWUI built-in Web Search** | OWUI middleware (not proxy tool) | **Disable** when using Filter — duplicate SearXNG |
 
-Filter appends `user_location` from Valves (OpenAI contract); proxy picks SearXNG `en`/`ru` from message text; orchestrated pipeline (plan 02) + SSE (plan 03).
+Filter appends `user_location` from Valves (OpenAI contract); proxy picks SearXNG `en`/`ru` from message text; orchestrated pipeline + SSE.
 
 **OWUI v0.6.32:** Enable model **Citations** and **Status Updates** (Settings → Models → Capabilities) so proxy SSE status/citation lines render in chat; global Admin Web Search stays off. Details: [open_webui/README.md](../open_webui/README.md).
-
-Install: [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md).
 
 ### Observability (chat-proxy)
 
@@ -146,27 +200,26 @@ Install: [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-sear
 
 Operator check: `docker logs chat-proxy 2>&1 | grep request_id=…` or filter `search_hits`. Details: [plans/05-chat-proxy-logging.md](plans/05-chat-proxy-logging.md).
 
-**Streaming (`stream: true`, OWUI default):** `request_id` is set in the route handler for `request_start`, then re-bound at the start of the SSE body generator (Starlette runs it in a separate async task). `request_end` and `reset_request_id` run in that same generator task so the stream is not torn down with `ValueError: Token was created in a different Context` (which surfaced in OWUI as `TransferEncodingError` after an otherwise successful web search).
-
-### Not in plan 02 / 03
-
-- `/v1/responses`, Assistants, Images API
-- Multiple system tools per request
+**Streaming (`stream: true`, OWUI default):** `request_id` is set in the route handler for `request_start`, then re-bound at the start of the SSE body generator (Starlette runs it in a separate async task). `request_end` and `reset_request_id` run in that same generator task so the stream is not torn down with `ValueError: Token was created in a different Context`.
 
 ---
 
-## vLLM service
+## vLLM service (internal)
 
-| Setting | Value | Notes |
-|---------|--------|--------|
-| Image | `vllm/vllm-openai:v0.12.0` (`VLLM_IMAGE_TAG`) | CUDA 12.x |
-| Model | `Qwen/Qwen3-VL-30B-A3B-Instruct` | VL MoE; hybrid thinking |
-| Served name (target) | `qwen3-vl-30b-instruct` | Legacy compose may still use `qwen3-30b-instruct` until plan 02 |
-| Context | `max_model_len=32768` | OOM-safe on ~80GB VRAM with vision |
-| GPU | `gpu_memory_utilization=0.9`, device `0` | |
+vLLM serves an **OpenAI-compatible model API** to chat-proxy. Operators configure model, context length, and GPU settings for their hardware.
+
+| Setting | Typical configuration | Notes |
+|---------|----------------------|--------|
+| Image | `vllm/vllm-openai` (`VLLM_IMAGE_TAG`) | CUDA 12.x |
+| Model (HF) | `VLLM_HF_MODEL` | Hugging Face model passed to vLLM (Compose `command`) |
+| Served name | `VLLM_SERVED_MODEL` | vLLM `--served-model-name`; also `CHAT_PROXY_DEFAULT_MODEL` in Compose |
+| Context | `max_model_len` in Compose | Size for VRAM and use case |
+| GPU | `gpu_memory_utilization`, device map, tensor parallel | Scale with accelerator count and model size |
 | Tool calling | `--enable-auto-tool-choice`, `--tool-call-parser hermes` | Client `function` tools |
-| Reasoning | `--reasoning-parser qwen3` (plan 02) | With `enable_thinking` per request |
+| Reasoning | `--reasoning-parser` when model supports thinking | With `enable_thinking` per request |
 | Multimodal | `--limit-mm-per-prompt.video 0` recommended | If video not used |
+
+**Example (local defaults):** `Qwen/Qwen3-VL-30B-A3B-Instruct` with served id `qwen3-vl-30b-instruct` — suitable for a single high-VRAM GPU. Larger models may require multi-GPU tensor parallelism; see [PRODUCTION.md](PRODUCTION.md).
 
 ### Tool template (model)
 
@@ -189,17 +242,17 @@ SDK clients use **OpenAI Chat API** (`tools[].type`). They do **not** speak MCP 
 | **System / hosted** | `type: "web_search"`, … | Orchestration + **MCP HTTP client** | Dedicated MCP server per capability |
 | **Client** | `type: "function"` | Passthrough | vLLM (Hermes `tool_calls`) |
 
-**Registry (concept):** `web_search` → `WEB_SEARCH_MCP_URL` (e.g. `http://web-search-mcp:8767/mcp`). Future types → other MCP URLs.
+**Registry:** `web_search` → `CHAT_PROXY_WEB_SEARCH_MCP_URL` (default `http://web-search-mcp:3333/mcp` in Compose). Future types → other MCP URLs.
 
-**Transport:** streamable **HTTP** only for proxy↔MCP in production (Compose). MCP **stdio** remains for local dev / external MCP clients, not the proxy hot path.
+**Transport:** streamable **HTTP** for proxy↔MCP in Compose deployments. MCP **stdio** for local dev / external MCP clients, not the proxy hot path.
 
-**In-process `operations`:** used inside each MCP server (and optionally by other in-process integrators). **Not** the primary path from chat-proxy to web-search in v1.
+**In-process `operations`:** used inside each MCP server. **Not** the primary path from chat-proxy to web-search.
 
 ---
 
 ## web-search module
 
-Copied from the standalone web-search project into this repo (`src/web_search/`):
+Embedded in this repo (`src/web_search/`):
 
 | Piece | Role |
 |-------|------|
@@ -218,14 +271,21 @@ Copied from the standalone web-search project into this repo (`src/web_search/`)
 |----------|---------|
 | `HF_CACHE_ROOT` | Model weights for vLLM |
 | `HF_HUB_CACHE` | Open WebUI RAG embeddings |
-| `VLLM_PORT` | Host port → vLLM 8000 (smoke / debug) |
+| `VLLM_HF_MODEL` | Hugging Face model id for vLLM (`docker-compose.yml` command) |
+| `VLLM_SERVED_MODEL` | Served model id: vLLM `--served-model-name`, `CHAT_PROXY_DEFAULT_MODEL`, client/smoke requests |
+| `VLLM_PORT` | Host port → vLLM 8000 (`127.0.0.1` bind; smoke / debug only) |
 | `VLLM_IMAGE_TAG` | vLLM image tag |
-| `VLLM_SERVED_MODEL` | Smoke scripts (target: `qwen3-vl-30b-instruct`) |
 | `OPEN_WEBUI_PORT` | UI port |
-| `OPENAI_API_KEY` | Dummy for local |
+| `CHAT_PROXY_PORT` | Public proxy port |
+| `CHAT_PROXY_WEB_SEARCH_MCP_URL` | In-container MCP URL for chat-proxy (default in Compose) |
+| `SEARXNG_PORT` | Host port → SearXNG (`127.0.0.1` bind; debug only) |
+| `WEB_SEARCH_MCP_PORT` | Host port → web-search MCP (`127.0.0.1` bind; debug only) |
+| `WEB_SEARCH_SEARXNG_BASE_URL` | SearXNG URL for web-search MCP container |
+| `OPENAI_API_KEY` | Placeholder for OpenAI SDK clients (not enforced by chat-proxy) |
 | `RAG_EMBEDDING_MODEL` | e.g. `BAAI/bge-m3` |
-| `CHAT_PROXY_PORT` | *(plan 02)* Public proxy port |
-| `WEB_SEARCH_*` | *(plan 02)* SearXNG URL, MCP URL, limits |
+| `SEARXNG_SECRET` | SearXNG instance secret |
+
+See `.env.example` for local defaults.
 
 ---
 
@@ -233,10 +293,12 @@ Copied from the standalone web-search project into this repo (`src/web_search/`)
 
 | Script | Checks |
 |--------|--------|
-| `tests/smoke/check_vllm_models.sh` | vLLM `/v1/models` |
-| `tests/smoke/check_vllm_tool_calls.sh` | Direct vLLM function calling |
-| `run_proxy_contract_smoke.sh` | Proxy contract checks (plain, functions, web_search, vision) |
-| *(plan 03)* | Proxy streaming smoke (`curl -N`), OWUI manual |
+| `tests/smoke/run_proxy_contract_smoke.sh` | Public chat-proxy contract (plain, functions, web_search, vision, stream) |
+| `tests/smoke/check_proxy_models.sh` | Proxy `GET /v1/models` |
+| `tests/smoke/check_vllm_models.sh` | vLLM `/v1/models` (optional debug) |
+| `tests/smoke/check_vllm_tool_calls.sh` | Direct vLLM function calling (optional debug) |
+
+Details: [../tests/smoke/README.md](../tests/smoke/README.md).
 
 ---
 
@@ -244,8 +306,6 @@ Copied from the standalone web-search project into this repo (`src/web_search/`)
 
 - [INDEX.md](INDEX.md) — file map
 - [DECISIONS.md](DECISIONS.md) — decision log
+- [PRODUCTION.md](PRODUCTION.md) — reference deployment guide
 - [PROGRESS.md](PROGRESS.md) — active plan
-- [plans/01-vllm-migration.md](plans/01-vllm-migration.md) — completed
-- [plans/02-chat-proxy-api.md](plans/02-chat-proxy-api.md) — completed
-- [plans/03-streaming.md](plans/03-streaming.md) — completed
-- [plans/04-open-webui-web-search-filter.md](plans/04-open-webui-web-search-filter.md) — active
+- [plans/](plans/) — historical implementation plans
